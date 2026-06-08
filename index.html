@@ -1,105 +1,2169 @@
-`json|`/g,'').trim();
-var articles = JSON.parse(text);
-setNewsCache('trending', articles, prompt);
-renderTrendingCards(articles);
-btn.style.display = 'none';
-} catch(e) {
-list.innerHTML = 'Could not load trending. Check connection and retry.';
-btn.textContent = 'Retry'; btn.disabled = false;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>POLARIS — Civic Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&family=Noto+Sans+Tamil:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+:root{
+  --a:#FF4D2E;
+  --gold:#FFB347;
+  --green:#22C55E;
+  --blue:#3B82F6;
+  --purple:#A78BFA;
+  --border:rgba(255,255,255,0.07);
+  --bg:#0a0a0a;
+  --card:#111111;
+  --card2:#161616;
+  --text:#f0f0f0;
+  --muted:#888;
 }
+html,body{height:100%;background:#000;display:flex;justify-content:center;align-items:flex-start;font-family:'DM Sans',sans-serif;color:var(--text);}
+#app{width:100%;max-width:430px;min-height:100dvh;background:var(--bg);position:relative;display:flex;flex-direction:column;}
+.screen{display:none;flex-direction:column;flex:1;overflow-y:auto;padding-bottom:72px;}
+.screen.active{display:flex;}
+
+/* NAV */
+#nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:rgba(10,10,10,0.95);backdrop-filter:blur(20px);border-top:1px solid var(--border);display:flex;justify-content:space-around;padding:8px 0 max(8px,env(safe-area-inset-bottom));z-index:50;}
+.nav-btn{display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 12px;cursor:pointer;border:none;background:none;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:10px;font-weight:500;transition:.2s;}
+.nav-btn.active{color:var(--a);}
+.nav-btn svg{width:22px;height:22px;}
+
+/* CARDS */
+.card{background:var(--card);border-radius:16px;border:1px solid var(--border);padding:16px;margin:0 16px 12px;}
+.card2{background:var(--card2);border-radius:12px;padding:12px;margin-bottom:8px;}
+
+/* PROGRESS BAR */
+.prog-track{background:rgba(255,255,255,.07);border-radius:99px;height:5px;margin:8px 0;}
+.prog-bar{height:5px;border-radius:99px;background:linear-gradient(90deg,var(--a),var(--gold));transition:.6s;}
+
+/* TAGS */
+.tag{display:inline-block;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600;}
+.tag-red{background:rgba(255,77,46,.15);color:var(--a);border:1px solid rgba(255,77,46,.25);}
+.tag-green{background:rgba(34,197,94,.1);color:var(--green);border:1px solid rgba(34,197,94,.2);}
+.tag-blue{background:rgba(59,130,246,.1);color:#60a5fa;border:1px solid rgba(59,130,246,.2);}
+.tag-gold{background:rgba(255,179,71,.1);color:var(--gold);border:1px solid rgba(255,179,71,.2);}
+
+/* OVERLAYS & SHEETS */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);opacity:0;pointer-events:none;transition:.3s;z-index:100;display:flex;align-items:flex-end;justify-content:center;}
+.overlay.open{opacity:1;pointer-events:all;}
+.sheet{background:#111;border-radius:20px 20px 0 0;padding:20px;width:100%;max-width:430px;max-height:88vh;overflow-y:auto;transform:translateY(100%);transition:.35s cubic-bezier(.4,0,.2,1);}
+.overlay.open .sheet{transform:translateY(0);}
+.sheet-handle{width:40px;height:4px;background:rgba(255,255,255,.15);border-radius:99px;margin:0 auto 16px;}
+
+/* INPUTS */
+.inp{width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:12px;padding:12px 14px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;outline:none;transition:.2s;}
+.inp:focus{border-color:rgba(255,77,46,.4);background:rgba(255,77,46,.04);}
+.inp::placeholder{color:var(--muted);}
+textarea.inp{resize:none;min-height:90px;}
+.inp-label{font-size:12px;color:var(--muted);margin-bottom:5px;font-weight:500;}
+
+/* BUTTONS */
+.btn{width:100%;padding:14px;border-radius:14px;font-family:'DM Sans',sans-serif;font-weight:600;font-size:14px;cursor:pointer;border:none;transition:.2s;letter-spacing:.01em;}
+.btn-primary{background:var(--a);color:#fff;}
+.btn-primary:active{background:#e03d20;}
+.btn-outline{background:transparent;color:var(--text);border:1px solid var(--border);}
+.btn-green{background:rgba(34,197,94,.12);color:var(--green);border:1px solid rgba(34,197,94,.25);}
+.btn-ghost{background:rgba(255,255,255,.05);color:var(--text);}
+
+/* VIOLATION BOXES */
+.vdb{border-radius:12px;padding:12px;margin-bottom:8px;font-size:12px;line-height:1.65;}
+.vdr{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.15);}
+.vdg{background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.15);}
+.vdbl{background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.15);}
+.vdgold{background:rgba(255,179,71,.08);border:1px solid rgba(255,179,71,.15);}
+.decode-btn{background:rgba(255,77,46,.12);border:1px solid rgba(255,77,46,.25);color:var(--a);padding:5px 10px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap;}
+.flag-pill{display:inline-flex;align-items:center;gap:5px;padding:5px 10px;border-radius:99px;font-size:11px;font-weight:600;margin:3px 3px 3px 0;}
+.flag-red{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);color:#fca5a5;}
+.flag-gold{background:rgba(255,179,71,.12);border:1px solid rgba(255,179,71,.25);color:var(--gold);}
+.flag-blue{background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.25);color:#93c5fd;}
+.flag-green{background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.25);color:#86efac;}
+.nat-card{background:var(--card);border-radius:14px;border:1px solid var(--border);padding:14px;margin:0 16px 10px;}
+.vdb-label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px;opacity:.7;}
+
+/* ACTION BUTTONS */
+.ctag{display:flex;flex-direction:column;gap:8px;margin-top:12px;}
+.ctab{width:100%;padding:11px;border-radius:12px;font-size:12px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;border:none;transition:.2s;}
+.ctar{background:rgba(255,77,46,.15);color:#FF4D2E;border:1px solid rgba(255,77,46,.3);}
+.ctabg{background:rgba(34,197,94,.1);color:#22C55E;border:1px solid rgba(34,197,94,.25);}
+.ctabo{background:rgba(59,130,246,.1);color:#60a5fa;border:1px solid rgba(59,130,246,.2);}
+.ctabgold{background:rgba(255,179,71,.1);color:var(--gold);border:1px solid rgba(255,179,71,.2);}
+
+/* PLAYBOOK */
+.pb-step{background:rgba(255,255,255,.04);border-radius:12px;padding:13px;margin-bottom:8px;border-left:2px solid var(--a);}
+.playbook-overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:200;opacity:0;pointer-events:none;transition:.3s;display:flex;align-items:flex-end;justify-content:center;}
+.playbook-overlay.open{opacity:1;pointer-events:all;}
+.playbook-sheet{background:#111;border-radius:20px 20px 0 0;padding:20px;width:100%;max-width:430px;max-height:88vh;overflow-y:auto;transform:translateY(100%);transition:.35s cubic-bezier(.4,0,.2,1);}
+.playbook-overlay.open .playbook-sheet{transform:translateY(0);}
+
+/* ROLE ROWS */
+.role-row{display:flex;align-items:center;gap:10px;padding:10px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);margin-bottom:6px;opacity:.3;transition:.6s;}
+.role-row.filled{opacity:1;border-color:rgba(34,197,94,.3);background:rgba(34,197,94,.05);}
+
+/* HERO TABS */
+.tab-row{display:flex;gap:6px;padding:16px 16px 0;overflow-x:auto;}
+.tab-row::-webkit-scrollbar{display:none;}
+.tab-btn{flex-shrink:0;padding:7px 16px;border-radius:99px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:'DM Sans',sans-serif;transition:.2s;}
+.tab-btn.active{background:var(--a);color:#fff;border-color:var(--a);}
+
+/* SCREEN HEADER */
+.s-head{padding:20px 16px 12px;display:flex;flex-direction:column;gap:4px;}
+.s-head h2{font-family:'Syne',sans-serif;font-size:22px;font-weight:700;}
+.s-head p{font-size:13px;color:var(--muted);}
+
+/* CHIP GRID */
+.chip-grid{display:flex;flex-wrap:wrap;gap:8px;padding:0 16px;}
+.chip{padding:8px 14px;border-radius:99px;font-size:13px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:rgba(255,255,255,.03);color:var(--text);transition:.2s;font-family:'DM Sans',sans-serif;}
+.chip.sel{background:rgba(255,77,46,.15);color:var(--a);border-color:rgba(255,77,46,.4);}
+
+/* COURAGE MODAL */
+.courage-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:300;opacity:0;pointer-events:none;transition:.3s;display:flex;align-items:center;justify-content:center;padding:24px;}
+.courage-overlay.open{opacity:1;pointer-events:all;}
+.courage-box{background:#111;border-radius:20px;padding:28px;width:100%;max-width:380px;border:1px solid rgba(34,197,94,.2);text-align:center;}
+
+/* REPORT OVERLAY */
+.report-overlay{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:150;opacity:0;pointer-events:none;transition:.3s;display:flex;align-items:flex-end;justify-content:center;}
+.report-overlay.open{opacity:1;pointer-events:all;}
+
+/* FAB */
+/* ONBOARD */
+#s-onboard{padding-bottom:0;}
+.ob-hero{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px 24px;gap:12px;background:radial-gradient(ellipse at 50% 20%,rgba(255,77,46,.12) 0%,transparent 60%);}
+.ob-logo{font-family:'Syne',sans-serif;font-size:52px;font-weight:800;letter-spacing:-.02em;background:linear-gradient(135deg,#fff 0%,rgba(255,77,46,.9) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.ob-tag{font-size:15px;color:var(--muted);text-align:center;line-height:1.5;max-width:260px;}
+.ob-promise{display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.04);border-radius:14px;padding:14px 16px;width:100%;border:1px solid var(--border);}
+.ob-promise-icon{font-size:24px;}
+.ob-promise-text{font-size:13px;color:var(--muted);line-height:1.4;}
+.ob-promise-text strong{color:var(--text);display:block;font-size:14px;margin-bottom:1px;}
+.ob-footer{padding:20px 24px;padding-bottom:max(24px,env(safe-area-inset-bottom));}
+#s-onboard .screen{padding-bottom:0;}
+
+/* HOME */
+.guardian-strip{background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:10px;padding:10px 12px;font-size:12px;color:var(--green);display:flex;align-items:center;gap:6px;margin-top:10px;}
+.upvote-btn{display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:99px;background:rgba(255,77,46,.1);border:1px solid rgba(255,77,46,.25);color:var(--a);font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:.2s;}
+.upvote-btn.voted{background:rgba(34,197,94,.1);border-color:rgba(34,197,94,.3);color:var(--green);}
+.upvote-btn:disabled{cursor:default;}
+.escalation-badge{font-size:11px;color:var(--gold);background:rgba(255,179,71,.08);border:1px solid rgba(255,179,71,.18);border-radius:8px;padding:5px 10px;margin-top:8px;display:flex;align-items:center;gap:5px;}
+/* ISSUE ACTION BAR */
+.issue-bar{display:flex;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
+.ib{flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:7px 4px;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid var(--border);font-size:13px;cursor:pointer;color:var(--muted);font-family:'DM Sans',sans-serif;font-weight:600;transition:.2s;white-space:nowrap;}
+.ib:active{background:rgba(255,255,255,.09);}
+.ib.voted{color:var(--green);border-color:rgba(34,197,94,.3);background:rgba(34,197,94,.07);}
+.ib-count{font-size:11px;}
+
+/* NEWS */
+.news-card{background:var(--card);border-radius:16px;border:1px solid var(--border);overflow:hidden;margin:0 16px 12px;}
+.news-body{padding:14px;}
+.src-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:3px 10px;border-radius:99px;border:1px solid var(--border);color:var(--muted);background:rgba(255,255,255,.03);margin-bottom:8px;}
+
+/* REPS */
+.rep-card{background:var(--card);border-radius:16px;border:1px solid var(--border);padding:16px;margin:0 16px 12px;}
+.rep-avatar{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--a),var(--gold));display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-size:20px;font-weight:700;color:#fff;flex-shrink:0;}
+.contact-icons{display:flex;gap:8px;margin-top:12px;}
+.contact-icon{width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,.05);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;text-decoration:none;}
+
+/* LEGAL CAT CHIPS */
+.cat-chip{display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 10px;border-radius:16px;background:var(--card);border:1px solid var(--border);cursor:pointer;transition:.2s;font-size:11px;font-weight:600;color:var(--muted);font-family:'DM Sans',sans-serif;text-align:center;}
+.cat-chip:active{border-color:var(--a);background:rgba(255,77,46,.08);}
+.cat-chip .cat-icon{font-size:26px;}
+.cat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:0 16px;}
+
+/* LEADERBOARD */
+.lb-row{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.03);border:1px solid var(--border);margin-bottom:6px;}
+.lb-rank{font-family:'Syne',sans-serif;font-size:18px;font-weight:800;width:28px;text-align:center;}
+.lb-rank.gold{color:var(--gold);}
+.lb-rank.silver{color:#aaa;}
+.lb-rank.bronze{color:#cd7f32;}
+
+/* RTI */
+.rti-step{display:flex;gap:10px;margin-bottom:12px;}
+.rti-step-num{width:24px;height:24px;border-radius:50%;background:rgba(255,77,46,.15);border:1px solid rgba(255,77,46,.3);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--a);flex-shrink:0;margin-top:1px;}
+.rti-step-body{font-size:13px;line-height:1.6;}
+.rti-step-body strong{color:var(--text);}
+
+/* GUARDIAN MATCH */
+.guardian-card{background:var(--card);border-radius:16px;border:1px solid var(--border);padding:20px;margin:0 16px 12px;text-align:center;}
+.guardian-avatar-lg{width:72px;height:72px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:32px;margin:0 auto 12px;border:2px solid rgba(255,255,255,.1);}
+
+/* ISSUE UPLOAD */
+.upload-zone{border:2px dashed rgba(255,255,255,.1);border-radius:14px;padding:24px;text-align:center;cursor:pointer;transition:.2s;background:rgba(255,255,255,.02);}
+.upload-zone:hover{border-color:rgba(255,77,46,.3);background:rgba(255,77,46,.04);}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:3px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:99px;}
+
+/* DIVIDER */
+.divider{height:1px;background:var(--border);margin:12px 16px;}
+
+/* LETTER BOX */
+#letter-out{background:rgba(255,255,255,.04);border-radius:12px;padding:14px;font-size:11px;line-height:1.8;color:#ccc;white-space:pre-wrap;display:none;margin-top:10px;border:1px solid var(--border);max-height:200px;overflow-y:auto;}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- ====== ONBOARD ====== -->
+<div id="s-onboard" class="screen active" style="padding-bottom:0;">
+  <div class="ob-hero">
+    <div class="ob-logo">POLARIS</div>
+    <div style="font-size:12px;font-weight:700;letter-spacing:.2em;color:var(--a);text-transform:uppercase;">Chennai Civic Intelligence</div>
+    <p class="ob-tag">Your city. Your rights. Your power.</p>
+    <div style="width:100%;display:flex;flex-direction:column;gap:8px;margin-top:12px;">
+      <div class="ob-promise"><div class="ob-promise-icon">⚖️</div><div class="ob-promise-text"><strong>Know Your Rights</strong>Real Indian laws, plain language, no jargon</div></div>
+      <div class="ob-promise"><div class="ob-promise-icon">🛡️</div><div class="ob-promise-text"><strong>Guardian Network</strong>47 verified civic champions have your back</div></div>
+      <div class="ob-promise"><div class="ob-promise-icon">📋</div><div class="ob-promise-text"><strong>File RTI in Minutes</strong>AI drafts, Tamil Nadu portal step-by-step</div></div>
+    </div>
+  </div>
+  <div class="ob-footer">
+    <button class="btn btn-primary" onclick="enterApp()" style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;">Enter POLARIS →</button>
+    <p style="font-size:11px;color:var(--muted);text-align:center;margin-top:12px;">By citizens, for citizens. Chennai, Tamil Nadu 🌐</p>
+  </div>
+</div>
+
+<!-- ====== HOME ====== -->
+<!-- WELCOME POPUP -->
+<div class="overlay" id="welcome-overlay">
+  <div class="sheet" style="text-align:center;">
+    <div style="font-size:40px;margin-bottom:10px;">👋</div>
+    <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;margin-bottom:6px;">Welcome to POLARIS</div>
+    <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:20px;">What brings you here today?</div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <button onclick="welcomeChoice('file')" style="background:rgba(255,77,46,.12);border:1px solid rgba(255,77,46,.3);border-radius:14px;padding:16px;cursor:pointer;font-family:'DM Sans',sans-serif;text-align:left;display:flex;align-items:center;gap:12px;">
+        <span style="font-size:26px;">📋</span>
+        <div><div style="font-size:14px;font-weight:700;color:var(--text);">File a civic complaint</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">Report an issue in your area</div></div>
+      </button>
+      <button onclick="welcomeChoice('browse')" style="background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:14px;padding:16px;cursor:pointer;font-family:'DM Sans',sans-serif;text-align:left;display:flex;align-items:center;gap:12px;">
+        <span style="font-size:26px;">👀</span>
+        <div><div style="font-size:14px;font-weight:700;color:var(--text);">Just browsing</div><div style="font-size:11px;color:var(--muted);margin-top:2px;">See what's happening in the city</div></div>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- HOME -->
+<div id="s-home" class="screen">
+  <!-- HEADER -->
+  <div class="s-head" style="padding-bottom:8px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div><div style="font-size:12px;color:var(--a);font-weight:700;letter-spacing:.08em;text-transform:uppercase;">POLARIS</div><h2>Issues</h2></div>
+      <div style="background:rgba(255,77,46,.1);border:1px solid rgba(255,77,46,.2);border-radius:10px;padding:7px 10px;text-align:center;cursor:pointer;" onclick="goTo('s-heroes',4)">
+        <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;color:var(--a);">47</div>
+        <div style="font-size:9px;color:var(--muted);">Guardians</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div style="display:flex;gap:8px;padding:0 16px 12px;">
+    <button class="tab-btn active" id="htab-trending" onclick="homeTab('trending',this)">🔥 Trending</button>
+    <button class="tab-btn" id="htab-myissues" onclick="homeTab('myissues',this)">📋 My Issues</button>
+  </div>
+
+  <!-- TRENDING TAB -->
+  <div id="htab-trending-content">
+    <!-- ISSUE CARD 1 -->
+    <div class="card">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;"><span class="tag tag-red">🚨 Critical</span><span class="tag" style="background:rgba(255,255,255,.04);color:var(--muted);border:1px solid var(--border);">Mylapore Ward 108</span></div>
+      <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;line-height:1.3;">Sewage overflow on Kutchery Road — 11 days ignored</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px;line-height:1.5;">Raw sewage overflowing near Mylapore Tank. GCC Ward 108 complaint #CCC2024-8847 filed 11 days ago. No response. Children walking through it to reach school.</div>
+      <div class="prog-track"><div class="prog-bar" style="width:73%;"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:8px;"><span id="uv1-count">73 upvotes</span><span>100 → auto-escalation</span></div>
+      <div class="escalation-badge">⚡ <span id="uv1-remain">27</span> more upvotes → Complaint auto-sent to GCC Commissioner</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px;">By <strong style="color:var(--text);">Mylapore_Priya</strong></div>
+      <div class="issue-bar">
+        <button class="ib" id="uv1" onclick="upvoteBar(this,'uv1-n',73,100)">▲ <span class="ib-count" id="uv1-n">73</span></button>
+        <button class="ib" onclick="shareIssue('Sewage overflow on Kutchery Road, Mylapore — 11 days ignored','Mylapore Ward 108')">↗</button>
+        <button class="ib" onclick="tweetIssue('Sewage overflow on Kutchery Road, Mylapore — 11 days ignored','Mylapore Ward 108')">𝕏</button>
+        <button class="ib" onclick="openComments('c1')">💬 <span class="ib-count" id="c1-n">4</span></button>
+      </div>
+      <div class="guardian-strip">🛡️ <strong>Be brave. 47 Guardians have your back.</strong></div>
+    </div>
+
+    <!-- ISSUE CARD 2 -->
+    <div class="card">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;"><span class="tag tag-gold">⚠️ Ongoing</span><span class="tag" style="background:rgba(255,255,255,.04);color:var(--muted);border:1px solid var(--border);">Anna Nagar Ward 42</span></div>
+      <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;line-height:1.3;">Street lights dead on 14th Main for 3 weeks</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px;line-height:1.5;">12 consecutive lamp posts non-functional. Two chain-snatching incidents reported. Women residents avoiding the street after 8pm. TANGEDCO contacted twice.</div>
+      <div class="prog-track"><div class="prog-bar" style="width:44%;background:linear-gradient(90deg,var(--gold),#f59e0b);"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:8px;"><span id="uv2-count">44 upvotes</span><span>100 → auto-escalation</span></div>
+      <div class="escalation-badge">⚡ <span id="uv2-remain">56</span> more upvotes → Alert sent to MLA + TANGEDCO SE</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px;">By <strong style="color:var(--text);">T_Nagar_Murugan</strong></div>
+      <div class="issue-bar">
+        <button class="ib" id="uv2" onclick="upvoteBar(this,'uv2-n',44,100)">▲ <span class="ib-count" id="uv2-n">44</span></button>
+        <button class="ib" onclick="shareIssue('Street lights dead on 14th Main, Anna Nagar — 3 weeks','Anna Nagar Ward 42')">↗</button>
+        <button class="ib" onclick="tweetIssue('Street lights dead on 14th Main, Anna Nagar — 3 weeks','Anna Nagar Ward 42')">𝕏</button>
+        <button class="ib" onclick="openComments('c2')">💬 <span class="ib-count" id="c2-n">7</span></button>
+      </div>
+      <div class="guardian-strip">🛡️ <strong>Be brave. 47 Guardians have your back.</strong></div>
+    </div>
+
+    <!-- ISSUE CARD 3 -->
+    <div class="card">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;"><span class="tag tag-blue">🏗️ Infrastructure</span><span class="tag" style="background:rgba(255,255,255,.04);color:var(--muted);border:1px solid var(--border);">Perambur Ward 67</span></div>
+      <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;line-height:1.3;">Road dug, left open for 6 months — OFC contractor vanished</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px;line-height:1.5;">BSNL OFC contractor dug 200m of Lattice Bridge Road, laid cable, never refilled. 2 bike accidents. GCC contract number obtained via RTI — contractor fined ₹0 so far.</div>
+      <div class="prog-track"><div class="prog-bar" style="width:88%;background:linear-gradient(90deg,var(--blue),var(--purple));"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:8px;"><span id="uv3-count">88 upvotes</span><span>100 → auto-escalation</span></div>
+      <div class="escalation-badge">⚡ <span id="uv3-remain">12</span> more upvotes → Media alert sent to The Hindu + press release</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px;">By <strong style="color:var(--text);">KavithaRTI</strong> · RTI filed ✅</div>
+      <div class="issue-bar">
+        <button class="ib" id="uv3" onclick="upvoteBar(this,'uv3-n',88,100)">▲ <span class="ib-count" id="uv3-n">88</span></button>
+        <button class="ib" onclick="shareIssue('Road dug open 6 months — OFC contractor vanished, Perambur','Perambur Ward 67')">↗</button>
+        <button class="ib" onclick="tweetIssue('Road dug open 6 months — OFC contractor vanished, Perambur','Perambur Ward 67')">𝕏</button>
+        <button class="ib" onclick="openComments('c3')">💬 <span class="ib-count" id="c3-n">11</span></button>
+      </div>
+      <div class="guardian-strip">🛡️ <strong>Be brave. 47 Guardians have your back.</strong></div>
+    </div>
+  </div>
+
+  <!-- MY ISSUES TAB -->
+  <div id="htab-myissues-content" style="display:none;">
+    <!-- FILE COMPLAINT BUTTON -->
+    <div style="padding:0 16px 14px;">
+      <button onclick="openReport()" class="btn btn-primary" style="font-family:'Syne',sans-serif;font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px;">
+        📋 File a New Complaint
+      </button>
+    </div>
+
+    <!-- EMPTY STATE (shown when no issues filed) -->
+    <div id="myissues-empty" style="padding:40px 24px;text-align:center;">
+      <div style="font-size:48px;margin-bottom:12px;">📭</div>
+      <div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:700;margin-bottom:6px;">No complaints yet</div>
+      <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:20px;">File your first complaint and track it here. Every complaint you file builds evidence for the community.</div>
+      <button onclick="openReport()" style="background:rgba(255,77,46,.12);border:1px solid rgba(255,77,46,.3);border-radius:12px;padding:12px 24px;color:var(--a);font-size:13px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;">+ File a Complaint</button>
+    </div>
+
+    <!-- USER ISSUES LIST (populated after filing) -->
+    <div id="myissues-list" style="display:none;padding:0 0 8px;"></div>
+  </div>
+</div>
+
+<!-- ====== NEWS ====== -->
+<div id="s-news" class="screen">
+  <div class="s-head">
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <h2>News</h2>
+      <div id="news-refresh-label" style="font-size:10px;color:var(--muted);text-align:right;">Updates every 48h<br><span id="news-next-refresh"></span></div>
+    </div>
+  </div>
+
+  <!-- TAB ROW -->
+  <div style="display:flex;gap:8px;padding:0 16px 14px;">
+    <button class="tab-btn active" id="ntab-civic" onclick="newsTab('civic',this)">📍 Civic</button>
+    <button class="tab-btn" id="ntab-national" onclick="newsTab('national',this)">🇮🇳 National</button>
+    <button class="tab-btn" id="ntab-trending" onclick="newsTab('trending',this)">🔥 Trending</button>
+  </div>
+
+  <!-- ── CIVIC TAB ── -->
+  <div id="ntab-civic-content">
+    <div class="news-card" id="nc-civic-1">
+      <div style="height:100px;background:linear-gradient(135deg,rgba(255,77,46,.2),rgba(59,130,246,.15));display:flex;align-items:center;justify-content:center;font-size:36px;">🏫</div>
+      <div class="news-body">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <span class="src-badge">📰 The Hindu</span><span style="font-size:11px;color:var(--muted);">2 days ago</span>
+        </div>
+        <div style="font-size:14px;font-weight:700;line-height:1.4;margin-bottom:5px;font-family:'Syne',sans-serif;">5 Chennai private schools served notices for illegal capitation fee collection</div>
+        <p style="font-size:12px;color:var(--muted);line-height:1.6;">DEO Chennai acted on RTI-backed complaints. Schools demanded ₹2–4L as "development contributions." RTE Section 13 violations confirmed.</p>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;gap:8px;">
+          <span class="tag tag-red" style="font-size:10px;">Education Rights</span>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <a href="https://www.thehindu.com/news/cities/chennai/search/?q=chennai+school+capitation+fee+notice+DEO" target="_blank" style="font-size:11px;color:var(--blue);font-weight:600;text-decoration:none;white-space:nowrap;">Read ↗</a>
+            <button class="decode-btn" onclick="openDecoder('civic1')">🔍 Decode</button>
+            <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;" onclick="shareNews('schools')">↗</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="news-card">
+      <div style="height:100px;background:linear-gradient(135deg,rgba(34,197,94,.2),rgba(255,179,71,.15));display:flex;align-items:center;justify-content:center;font-size:36px;">🏗️</div>
+      <div class="news-body">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <span class="src-badge">📰 New Indian Express</span><span style="font-size:11px;color:var(--muted);">4 days ago</span>
+        </div>
+        <div style="font-size:14px;font-weight:700;line-height:1.4;margin-bottom:5px;font-family:'Syne',sans-serif;">GCC forced to disclose ₹47Cr road tender docs after 23 RTI applications</div>
+        <p style="font-size:12px;color:var(--muted);line-height:1.6;">Citizen group's RTI campaign uncovered discrepancies in contractor selection. First Appellate Authority ordered full disclosure within 15 days.</p>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;gap:8px;">
+          <span class="tag tag-green" style="font-size:10px;">RTI Victory</span>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <a href="https://www.newindianexpress.com/search?query=GCC+road+tender+RTI+disclosure+Chennai" target="_blank" style="font-size:11px;color:var(--blue);font-weight:600;text-decoration:none;white-space:nowrap;">Read ↗</a>
+            <button class="decode-btn" onclick="openDecoder('civic2')">🔍 Decode</button>
+            <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;" onclick="shareNews('gcc')">↗</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="news-card">
+      <div style="height:100px;background:linear-gradient(135deg,rgba(167,139,250,.2),rgba(255,77,46,.15));display:flex;align-items:center;justify-content:center;font-size:36px;">👷</div>
+      <div class="news-body">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+          <span class="src-badge">📱 Times of India</span><span style="font-size:11px;color:var(--muted);">1 week ago</span>
+        </div>
+        <div style="font-size:14px;font-weight:700;line-height:1.4;margin-bottom:5px;font-family:'Syne',sans-serif;">IT firm in Perungudi penalised ₹8.5L for PF non-deposit — worker's RTI triggered probe</div>
+        <p style="font-size:12px;color:var(--muted);line-height:1.6;">Contract worker's RTI to EPFO revealed 18 months of PF deductions never deposited. Labour enforcement followed within 60 days.</p>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;gap:8px;">
+          <span class="tag tag-blue" style="font-size:10px;">Labour Rights</span>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <a href="https://timesofindia.indiatimes.com/topic/epfo-chennai" target="_blank" style="font-size:11px;color:var(--blue);font-weight:600;text-decoration:none;white-space:nowrap;">Read ↗</a>
+            <button class="decode-btn" onclick="openDecoder('civic3')">🔍 Decode</button>
+            <button style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;" onclick="shareNews('pf')">↗</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── NATIONAL TAB ── -->
+  <div id="ntab-national-content" style="display:none;">
+    <div style="padding:0 16px 12px;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;">
+      <span style="color:var(--green);">●</span> AI-analysed · updated every 48h · <span id="nat-updated">Loading…</span>
+    </div>
+    <div id="national-news-list">
+      <div style="padding:40px 16px;text-align:center;color:var(--muted);font-size:13px;">
+        <div style="font-size:28px;margin-bottom:8px;">📡</div>
+        Loading national headlines…
+      </div>
+    </div>
+    <button id="nat-load-btn" onclick="loadNationalNews()" class="btn" style="margin:0 16px 16px;background:rgba(255,77,46,.1);color:var(--a);border:1px solid rgba(255,77,46,.25);font-size:13px;padding:12px;">Load National Headlines</button>
+  </div>
+
+  <!-- ── TRENDING TAB ── -->
+  <div id="ntab-trending-content" style="display:none;">
+    <div style="padding:0 16px 12px;font-size:12px;color:var(--muted);">Top stories across Indian media right now</div>
+    <div id="trending-list"></div>
+    <button id="trend-load-btn" onclick="loadTrendingNews()" class="btn" style="margin:0 16px 16px;background:rgba(59,130,246,.1);color:#60a5fa;border:1px solid rgba(59,130,246,.25);font-size:13px;padding:12px;">Load Trending Headlines</button>
+  </div>
+</div>
+
+<!-- ====== DECODER FULL PAGE ====== -->
+<div id="s-decoder" class="screen" style="padding-bottom:80px;">
+  <div style="position:sticky;top:0;background:rgba(10,10,10,.97);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);padding:12px 16px;display:flex;align-items:center;gap:12px;z-index:10;">
+    <button onclick="goTo('s-news',1)" style="background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:10px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:var(--text);flex-shrink:0;">←</button>
+    <div style="flex:1;"><div style="font-size:10px;color:var(--a);font-weight:700;letter-spacing:.08em;text-transform:uppercase;">POLARIS Decoder</div><div id="decoder-source-label" style="font-size:12px;color:var(--muted);"></div></div>
+  </div>
+
+  <div id="decoder-loading" style="padding:60px 16px;text-align:center;display:none;">
+    <div style="font-size:36px;margin-bottom:12px;">🔍</div>
+    <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;margin-bottom:6px;">Decoding this story…</div>
+    <div style="font-size:12px;color:var(--muted);">Checking facts · Detecting bias · Flagging gaps</div>
+  </div>
+
+  <div id="decoder-content" style="padding:16px;display:none;">
+    <!-- Headline -->
+    <div id="dec-headline" style="font-family:'Syne',sans-serif;font-size:16px;font-weight:800;line-height:1.4;margin-bottom:4px;"></div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+      <span id="dec-source-badge" class="src-badge"></span>
+      <a id="dec-read-link" href="#" target="_blank" style="font-size:11px;color:var(--blue);font-weight:700;text-decoration:none;">Read original ↗</a>
+    </div>
+
+    <!-- BIAS METER -->
+    <div style="background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:10px;">
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">📊 Bias Meter</div>
+      <div style="position:relative;height:10px;border-radius:99px;background:linear-gradient(90deg,#3B82F6 0%,#22C55E 50%,#FF4D2E 100%);margin-bottom:6px;">
+        <div id="dec-bias-dot" style="width:14px;height:14px;border-radius:50%;background:#fff;border:2px solid #000;position:absolute;top:-2px;transform:translateX(-50%);transition:.6s;left:50%;"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:8px;"><span>Left</span><span>Centre</span><span>Right</span></div>
+      <div id="dec-bias-label" style="font-size:13px;font-weight:700;text-align:center;"></div>
+    </div>
+
+    <!-- VERDICT -->
+    <div class="vdb vdbl" style="margin-bottom:10px;">
+      <div class="vdb-label" style="color:#93c5fd;">✅ Verdict</div>
+      <div id="dec-verdict" style="font-size:13px;line-height:1.65;"></div>
+    </div>
+
+    <!-- SIGNALS -->
+    <div id="dec-flags-wrap" style="margin-bottom:10px;"></div>
+
+    <!-- WHAT'S MISSING -->
+    <div class="vdb vdr" style="margin-bottom:10px;">
+      <div class="vdb-label" style="color:#fca5a5;">🕳️ What This Story Leaves Out</div>
+      <div id="dec-missing" style="font-size:13px;line-height:1.65;"></div>
+    </div>
+
+    <!-- WHO BENEFITS -->
+    <div class="vdb vdgold" style="margin-bottom:10px;">
+      <div class="vdb-label" style="color:var(--gold);">💰 Who Benefits From This Framing</div>
+      <div id="dec-benefit" style="font-size:13px;line-height:1.65;"></div>
+    </div>
+
+    <!-- CITIZEN ACTION -->
+    <div class="vdb vdg" style="margin-bottom:14px;">
+      <div class="vdb-label" style="color:#86efac;">⚡ What You Can Do</div>
+      <div id="dec-action" style="font-size:13px;line-height:1.65;"></div>
+    </div>
+
+    <a id="dec-source-link" href="#" target="_blank" class="btn btn-outline" style="display:block;text-align:center;text-decoration:none;font-size:13px;padding:12px;margin-bottom:8px;">Read Full Article ↗</a>
+  </div>
+</div>
+
+<!-- ====== REPS ====== -->
+<div id="s-reps" class="screen">
+  <div class="s-head">
+    <h2>Representatives</h2>
+    <p>Evidence-based accountability — vote with data, not emotion</p>
+  </div>
+
+  <!-- TIER TABS -->
+  <div style="display:flex;gap:6px;padding:0 16px 14px;overflow-x:auto;">
+    <button class="tab-btn active" id="rtab-local" onclick="repTab('local',this)">📍 Local</button>
+    <button class="tab-btn" id="rtab-cm" onclick="repTab('cm',this)">🏛️ CM</button>
+    <button class="tab-btn" id="rtab-pm" onclick="repTab('pm',this)">🇮🇳 PM</button>
+  </div>
+
+  <!-- ── LOCAL TAB (Ward + MLA + MP) ── -->
+  <div id="rtab-local-content">
+    <div style="background:rgba(59,130,246,.05);border:1px solid rgba(59,130,246,.1);border-radius:12px;margin:0 16px 12px;padding:10px 12px;font-size:12px;color:var(--muted);">
+      📍 Central Chennai — Mylapore, T.Nagar, Anna Nagar, Egmore
+    </div>
+
+    <!-- WARD COUNCILLOR -->
+    <div class="rep-card" onclick="openRepDetail('ward')" style="cursor:pointer;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div class="rep-avatar" style="background:linear-gradient(135deg,#22C55E,#16a34a);">S</div>
+        <div style="flex:1;">
+          <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;">Selvi Rajagopal</div>
+          <div style="font-size:12px;color:var(--muted);">Ward Councillor · Ward 108, Mylapore</div>
+          <span class="tag tag-green" style="margin-top:4px;font-size:10px;">Elected 2022</span>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:#FFB347;">54</div>
+          <div style="font-size:10px;color:var(--muted);">/ 100</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">
+        <span class="flag-pill flag-gold">⚠️ 3 open complaints</span>
+        <span class="flag-pill flag-green">✅ Fund: 68% utilized</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px;">Tap to see full tracker →</div>
+    </div>
+
+    <!-- MLA -->
+    <div class="rep-card" onclick="openRepDetail('mla')" style="cursor:pointer;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div class="rep-avatar" style="background:linear-gradient(135deg,var(--blue),var(--purple));">A</div>
+        <div style="flex:1;">
+          <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;">Aadhav Arjuna</div>
+          <div style="font-size:12px;color:var(--muted);">MLA · Villivakkam · TVK</div>
+          <span class="tag tag-blue" style="margin-top:4px;font-size:10px;">Elected 2026</span>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:#22C55E;">71</div>
+          <div style="font-size:10px;color:var(--muted);">/ 100</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">
+        <span class="flag-pill flag-green">✅ Assembly: 78%</span>
+        <span class="flag-pill flag-blue">ℹ️ New — limited data</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px;">Tap to see full tracker →</div>
+    </div>
+
+    <!-- MP -->
+    <div class="rep-card" onclick="openRepDetail('mp')" style="cursor:pointer;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div class="rep-avatar" style="background:linear-gradient(135deg,var(--a),var(--gold));">D</div>
+        <div style="flex:1;">
+          <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;">Dayanidhi Maran</div>
+          <div style="font-size:12px;color:var(--muted);">MP · Chennai Central · DMK</div>
+          <span class="tag tag-gold" style="margin-top:4px;font-size:10px;">Lok Sabha 2024</span>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:#22C55E;">68</div>
+          <div style="font-size:10px;color:var(--muted);">/ 100</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">
+        <span class="flag-pill flag-green">✅ MPLAD: 68% used</span>
+        <span class="flag-pill flag-gold">⚠️ Attendance: 72%</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px;">Tap to see full tracker →</div>
+    </div>
+  </div>
+
+  <!-- ── CM TAB ── -->
+  <div id="rtab-cm-content" style="display:none;">
+    <div class="rep-card" onclick="openRepDetail('cm')" style="cursor:pointer;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div class="rep-avatar" style="background:linear-gradient(135deg,#FF4D2E,#A78BFA);">V</div>
+        <div style="flex:1;">
+          <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;">Vijay (Thalapathy)</div>
+          <div style="font-size:12px;color:var(--muted);">Chief Minister · Tamil Nadu · TVK</div>
+          <span class="tag tag-red" style="margin-top:4px;font-size:10px;">In office since May 2026</span>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:#FFB347;">62</div>
+          <div style="font-size:10px;color:var(--muted);">/ 100</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">
+        <span class="flag-pill flag-blue">ℹ️ New govt — limited data</span>
+        <span class="flag-pill flag-green">✅ Strong mandate</span>
+        <span class="flag-pill flag-gold">⚠️ All promises pending</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px;">Tap to see WGI · HDI · Trust metrics →</div>
+    </div>
+    <div style="margin:0 16px 16px;padding:12px;background:rgba(255,179,71,.05);border:1px solid rgba(255,179,71,.15);border-radius:12px;font-size:12px;color:var(--muted);line-height:1.6;">
+      📊 CM is evaluated against World Bank WGI indicators, UN HDI, Edelman Trust Barometer, and Gallup approval data for Tamil Nadu. All data sourced from public indices.
+    </div>
+  </div>
+
+  <!-- ── PM TAB ── -->
+  <div id="rtab-pm-content" style="display:none;">
+    <div class="rep-card" onclick="openRepDetail('pm')" style="cursor:pointer;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div class="rep-avatar" style="background:linear-gradient(135deg,#FF9933,#138808);">N</div>
+        <div style="flex:1;">
+          <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;">Narendra Modi</div>
+          <div style="font-size:12px;color:var(--muted);">Prime Minister · India · BJP</div>
+          <span class="tag tag-gold" style="margin-top:4px;font-size:10px;">In office since May 2014</span>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:#FFB347;">58</div>
+          <div style="font-size:10px;color:var(--muted);">/ 100</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">
+        <span class="flag-pill flag-red">🚩 Rule of Law: declining</span>
+        <span class="flag-pill flag-red">🚩 Press Freedom: 159/180</span>
+        <span class="flag-pill flag-green">✅ GDP growth maintained</span>
+        <span class="flag-pill flag-gold">⚠️ 31 promises pending</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px;">Tap to see WGI · GGI · Gallup · Trust metrics →</div>
+    </div>
+    <div style="margin:0 16px 16px;padding:12px;background:rgba(255,77,46,.05);border:1px solid rgba(255,77,46,.15);border-radius:12px;font-size:12px;color:var(--muted);line-height:1.6;">
+      📊 PM is evaluated using World Bank WGI (6 dimensions), Global Governance Index, UN HDI, Edelman Trust Barometer, and Gallup World Poll. This is a meritocratic scorecard — not partisan.
+    </div>
+  </div>
+
+  <div style="padding:0 16px 16px;font-size:11px;color:var(--muted);line-height:1.6;">⚠️ Contact numbers are illustrative. Verify at <a href="https://sansad.in/ls/members" style="color:var(--blue);">sansad.in</a> · <a href="https://tnla.tn.gov.in" style="color:var(--blue);">tnla.tn.gov.in</a></div>
+</div>
+
+<!-- ====== REP DETAIL FULL PAGE ====== -->
+<div id="s-repdetail" class="screen" style="padding-bottom:80px;">
+  <div style="position:sticky;top:0;background:rgba(10,10,10,.97);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);padding:12px 16px;display:flex;align-items:center;gap:12px;z-index:10;">
+    <button onclick="goTo('s-reps',3)" style="background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:10px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:var(--text);flex-shrink:0;">←</button>
+    <div style="flex:1;"><div style="font-size:10px;color:var(--a);font-weight:700;letter-spacing:.08em;text-transform:uppercase;">Rep Tracker</div><div id="rd-name-bar" style="font-size:13px;font-weight:700;"></div></div>
+    <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;" id="rd-score-bar"></div>
+  </div>
+  <div id="repdetail-content" style="padding:16px;"></div>
+</div>
+
+<!-- ====== LEARN ====== -->
+<div id="s-learn" class="screen">
+  <div class="s-head"><h2>Playbooks</h2><p>Real battles won by Chennai guardians</p></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px;">
+    <div class="card" style="margin:0;cursor:pointer;padding:14px;" onclick="openPlaybook('sewage')">
+      <div style="font-size:28px;margin-bottom:8px;">🚰</div>
+      <div style="font-size:12px;font-weight:700;line-height:1.4;">Sewage RTI Playbook</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px;">By KavithaRTI · 5 steps</div>
+      <div class="tag tag-green" style="margin-top:8px;font-size:10px;">Won ✓</div>
+    </div>
+    <div class="card" style="margin:0;cursor:pointer;padding:14px;" onclick="openPlaybook('pf')">
+      <div style="font-size:28px;margin-bottom:8px;">💼</div>
+      <div style="font-size:12px;font-weight:700;line-height:1.4;">PF Non-Deposit Playbook</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px;">By Murugesan_K · 4 steps</div>
+      <div class="tag tag-green" style="margin-top:8px;font-size:10px;">Won ✓</div>
+    </div>
+    <div class="card" style="margin:0;cursor:pointer;padding:14px;" onclick="openPlaybook('school')">
+      <div style="font-size:28px;margin-bottom:8px;">🏫</div>
+      <div style="font-size:12px;font-weight:700;line-height:1.4;">School Donation Fight</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px;">By Mylapore_Priya · 5 steps</div>
+      <div class="tag tag-green" style="margin-top:8px;font-size:10px;">Won ✓</div>
+    </div>
+    <div class="card" style="margin:0;cursor:pointer;padding:14px;" onclick="openPlaybook('threat')">
+      <div style="font-size:28px;margin-bottom:8px;">🛡️</div>
+      <div style="font-size:12px;font-weight:700;line-height:1.4;">Threat / Intimidation</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px;">By RTI_Rajan · 5 steps</div>
+      <div class="tag tag-red" style="margin-top:8px;font-size:10px;">Critical</div>
+    </div>
+  </div>
+
+  <!-- CASE STUDIES -->
+  <div class="s-head" style="padding-top:20px;"><h2 style="font-size:18px;">Recent Wins</h2></div>
+  <div class="card" style="padding:14px;">
+    <div style="font-size:11px;color:var(--gold);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;">Case Study · Mylapore 2024</div>
+    <div style="font-size:14px;font-weight:700;font-family:'Syne',sans-serif;margin-bottom:6px;">A parent got a ₹3L capitation fee refunded</div>
+    <div style="font-size:12px;color:var(--muted);line-height:1.6;">School demanded ₹3L before admission. Parent filed complaint with DEO citing RTE Section 13. School issued refund in 19 days after notice. Total time: 3 weeks.</div>
+    <div style="display:flex;gap:8px;margin-top:8px;"><span class="tag tag-green" style="font-size:10px;">₹3L Recovered</span><span class="tag tag-blue" style="font-size:10px;">19 Days</span></div>
+  </div>
+  <div class="card" style="padding:14px;">
+    <div style="font-size:11px;color:var(--gold);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;">Case Study · Perambur 2024</div>
+    <div style="font-size:14px;font-weight:700;font-family:'Syne',sans-serif;margin-bottom:6px;">Worker recovered 18 months of stolen PF</div>
+    <div style="font-size:12px;color:var(--muted);line-height:1.6;">Employer deducted PF monthly but never deposited. RTI to EPFO Chennai revealed zero deposits. Labour enforcement recovered ₹1.2L plus 12% interest penalty from employer.</div>
+    <div style="display:flex;gap:8px;margin-top:8px;"><span class="tag tag-green" style="font-size:10px;">₹1.2L + Interest</span><span class="tag tag-blue" style="font-size:10px;">60 Days</span></div>
+  </div>
+</div>
+
+<!-- ====== CIVIC (SCENARIO) ====== -->
+<div id="s-civic" class="screen">
+  <div class="s-head"><h2>Report Issue</h2><p>What\'s your civic emergency?</p></div>
+  <div style="padding:0 16px 12px;font-size:13px;color:var(--muted);">Select all that apply:</div>
+  <div class="chip-grid" id="issue-chips">
+    <div class="chip" onclick="togChip(this)">🚰 Sewage/Drainage</div>
+    <div class="chip" onclick="togChip(this)">💡 Street Lights</div>
+    <div class="chip" onclick="togChip(this)">🏗️ Roads/Digging</div>
+    <div class="chip" onclick="togChip(this)">💰 Price Gouging</div>
+    <div class="chip" onclick="togChip(this)">🏫 School Fee</div>
+    <div class="chip" onclick="togChip(this)">🏥 Hospital Issue</div>
+    <div class="chip" onclick="togChip(this)">👮 Police Matter</div>
+    <div class="chip" onclick="togChip(this)">💼 Labour/PF</div>
+    <div class="chip" onclick="togChip(this)">🚌 Transport</div>
+    <div class="chip" onclick="togChip(this)">🗑️ Garbage/Waste</div>
+    <div class="chip" onclick="togChip(this)">🌊 Water Supply</div>
+    <div class="chip" onclick="togChip(this)">⚡ Power Outage</div>
+  </div>
+  <div style="padding:16px;">
+    <button class="btn btn-primary" onclick="matchGuardian()" style="font-family:'Syne',sans-serif;">Find Guardian + Action Plan →</button>
+  </div>
+  <div id="match-result" style="display:none;padding:0 16px 16px;">
+    <div class="card" style="margin:0;padding:16px;">
+      <div style="font-size:11px;color:var(--green);font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">✓ Guardian Matched</div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+        <div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--a),var(--gold));display:flex;align-items:center;justify-content:center;font-size:22px;">⭐</div>
+        <div><div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;">KavithaRTI</div><div style="font-size:12px;color:var(--muted);">Verified Hero · 34 issues resolved</div></div>
+      </div>
+      <div id="match-action" style="font-size:13px;color:var(--muted);line-height:1.6;"></div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px;">
+        <button class="btn btn-primary" onclick="goTo('s-rti',4)" style="font-size:13px;padding:11px;">File RTI →</button>
+        <button class="btn btn-green" onclick="goTo('s-legal',2)" style="font-size:13px;padding:11px;">Check Legal Shield →</button>
+        <button class="btn btn-outline" onclick="openThreat()" style="font-size:13px;padding:11px;">🛡️ Activate Guardian Network</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== LEGAL SHIELD ====== -->
+<div id="s-legal" class="screen">
+  <div class="s-head"><h2>Legal Shield</h2><p>Know your rights, cite the exact law</p></div>
+  <div style="padding:0 16px 12px;">
+    <div style="background:rgba(255,179,71,.06);border:1px solid rgba(255,179,71,.15);border-radius:12px;padding:12px;font-size:12px;color:var(--gold);line-height:1.6;">
+      ⚖️ All laws cited are real Indian statutes. Our lawyer <strong>Mr. Maddy Mathew</strong> reviews each category. Call: <a href="tel:9840341381" style="color:var(--gold);font-weight:700;">9840341381</a>
+    </div>
+  </div>
+  <div class="cat-grid">
+    <div class="cat-chip" onclick="showCategory('school')"><span class="cat-icon">🏫</span>Schools</div>
+    <div class="cat-chip" onclick="showCategory('hospital')"><span class="cat-icon">🏥</span>Hospitals</div>
+    <div class="cat-chip" onclick="showCategory('hotel')"><span class="cat-icon">🏨</span>Hotels</div>
+    <div class="cat-chip" onclick="showCategory('labour')"><span class="cat-icon">👷</span>Labour</div>
+    <div class="cat-chip" onclick="showCategory('police')"><span class="cat-icon">🚔</span>Police</div>
+    <div class="cat-chip" onclick="showCategory('banking')"><span class="cat-icon">🏦</span>Banks</div>
+    <div class="cat-chip" onclick="showCategory('women')"><span class="cat-icon">👩</span>Women</div>
+    <div class="cat-chip" onclick="showCategory('transport')"><span class="cat-icon">🚌</span>Transport</div>
+    <div class="cat-chip" onclick="showCategory('consumer')"><span class="cat-icon">🛒</span>Consumer</div>
+  </div>
+  <div style="padding:20px 16px 0;">
+    <div style="background:rgba(34,197,94,.05);border:1px solid rgba(34,197,94,.15);border-radius:12px;padding:14px;">
+      <div style="font-size:13px;font-weight:700;margin-bottom:6px;color:var(--green);">🆓 Free Legal Help</div>
+      <div style="font-size:12px;color:var(--muted);line-height:1.6;">NALSA Helpline: <strong style="color:var(--text);">15100</strong> (free legal aid, 24/7)<br>Tamil Nadu SLSA: <strong style="color:var(--text);">044-28411216</strong><br>POLARIS Lawyer: <a href="tel:9840341381" style="color:var(--green);font-weight:700;">Mr. Maddy Mathew — 9840341381</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== RTI PATH ====== -->
+<div id="s-rti" class="screen">
+  <div class="s-head"><h2>RTI Path</h2><p>Right to Information — File & Track</p></div>
+  <div class="tab-row" style="padding:0 16px 16px;">
+    <button class="tab-btn active" onclick="rtiP('submit',this)" id="rtitab-submit">Submit</button>
+    <button class="tab-btn" onclick="rtiP('track',this)" id="rtitab-track">Track</button>
+    <button class="tab-btn" onclick="rtiP('guide',this)" id="rtitab-guide">TN Guide</button>
+    <button class="tab-btn" onclick="rtiP('ai',this)" id="rtitab-ai">AI Draft</button>
+  </div>
+
+  <!-- SUBMIT TAB -->
+  <div id="rti-submit" style="padding:0 16px;">
+    <div style="background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.15);border-radius:12px;padding:12px;font-size:12px;color:#93c5fd;line-height:1.6;margin-bottom:14px;">
+      ℹ️ <strong>Tamil Nadu RTI:</strong> State portal → <a href="https://rtionline.tn.gov.in" target="_blank" style="color:var(--blue);">rtionline.tn.gov.in</a> | Central Ministries → <a href="https://rtionline.gov.in" target="_blank" style="color:var(--blue);">rtionline.gov.in</a><br>TN Application fee: <strong>FREE</strong> | Copy cost: ₹2/page | Reply time: 30 days
+    </div>
+    <div class="inp-label">Your Name *</div>
+    <input class="inp" id="rti-name" placeholder="Full name as in Aadhaar" style="margin-bottom:10px;">
+    <div class="inp-label">Address *</div>
+    <input class="inp" id="rti-addr" placeholder="Full postal address, Chennai" style="margin-bottom:10px;">
+    <div class="inp-label">Mobile / Email *</div>
+    <input class="inp" id="rti-contact" placeholder="Phone or email for response" style="margin-bottom:10px;">
+    <div class="inp-label">Department / Authority *</div>
+    <select class="inp" id="rti-dept" style="margin-bottom:10px;">
+      <option value="">Select department...</option>
+      <option>Greater Chennai Corporation (GCC)</option>
+      <option>TANGEDCO (Power)</option>
+      <option>CMWSSB (Water)</option>
+      <option>Tamil Nadu Police</option>
+      <option>District Collector, Chennai</option>
+      <option>DEO — District Education Officer</option>
+      <option>TNHB (Housing Board)</option>
+      <option>CMDA (Development Authority)</option>
+      <option>EPFO — PF Office Chennai</option>
+      <option>Labour Department, Tamil Nadu</option>
+      <option>Revenue Department</option>
+      <option>Other TN Department</option>
+    </select>
+    <div class="inp-label">What information do you seek? *</div>
+    <textarea class="inp" id="rti-text" placeholder="Be specific. E.g.: 'Please provide the work order, contractor name, estimated cost, and current completion status for the road repair work on [Street Name], [Area], Chennai, carried out under GCC work order number [if known], during the period [dates].'" style="margin-bottom:10px;min-height:110px;"></textarea>
+    <div class="inp-label">Supporting Documents (optional)</div>
+    <div class="upload-zone" onclick="document.getElementById('rti-file').click()">
+      <input type="file" id="rti-file" style="display:none;" multiple accept="image/*,.pdf" onchange="handleFileUpload(this)">
+      <div style="font-size:24px;margin-bottom:6px;">📎</div>
+      <div style="font-size:13px;font-weight:600;">Attach photos, complaint receipts</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px;">JPG, PNG, PDF accepted</div>
+    </div>
+    <div id="file-list" style="margin-top:8px;font-size:12px;color:var(--green);"></div>
+    <button class="btn btn-primary" style="margin-top:14px;font-family:'Syne',sans-serif;font-size:15px;" onclick="showCouragePrompt()">File RTI →</button>
+  </div>
+
+  <!-- TRACK TAB -->
+  <div id="rti-track" style="padding:0 16px;display:none;">
+    <div class="inp-label">RTI Registration Number</div>
+    <input class="inp" id="rti-track-num" placeholder="e.g. TNGCC/R/2024/00234" style="margin-bottom:10px;">
+    <button class="btn btn-primary" style="margin-bottom:16px;" onclick="trackRTI()">Check Status</button>
+    <div style="font-size:13px;font-weight:700;margin-bottom:8px;">Your Filed RTIs</div>
+    <div class="card2" style="margin-bottom:6px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;"><div><div style="font-size:13px;font-weight:600;">Sewage — Kutchery Road</div><div style="font-size:11px;color:var(--muted);">TNGCC/R/2024/08847 · Filed 12 Nov 2024</div></div><span class="tag tag-gold" style="font-size:10px;">Pending</span></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px;">Due by: 12 Dec 2024 · <a href="https://rtionline.tn.gov.in" target="_blank" style="color:var(--blue);">Track →</a></div>
+    </div>
+    <div class="card2">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;"><div><div style="font-size:13px;font-weight:600;">Road Contract — Perambur</div><div style="font-size:11px;color:var(--muted);">TNGCC/R/2024/07291 · Filed 3 Oct 2024</div></div><span class="tag tag-green" style="font-size:10px;">Reply Received</span></div>
+      <div style="font-size:11px;color:var(--green);margin-top:6px;">✓ Responded within 28 days. Contractor details disclosed.</div>
+    </div>
+  </div>
+
+  <!-- TN GUIDE TAB -->
+  <div id="rti-guide" style="padding:0 16px;display:none;">
+    <div style="font-size:14px;font-weight:700;font-family:'Syne',sans-serif;margin-bottom:12px;">Filing RTI in Tamil Nadu — Step by Step</div>
+    <div class="rti-step"><div class="rti-step-num">1</div><div class="rti-step-body"><strong>Identify the right department</strong><br>GCC for civic issues, TANGEDCO for power, CMWSSB for water, DEO for schools. Filing to wrong dept = delay.</div></div>
+    <div class="rti-step"><div class="rti-step-num">2</div><div class="rti-step-body"><strong>Use TN State Portal</strong><br>Go to <a href="https://rtionline.tn.gov.in" target="_blank" style="color:var(--blue);">rtionline.tn.gov.in</a> for TN govt departments. For central ministries (Railways, EPFO central) use <a href="https://rtionline.gov.in" target="_blank" style="color:var(--blue);">rtionline.gov.in</a></div></div>
+    <div class="rti-step"><div class="rti-step-num">3</div><div class="rti-step-body"><strong>Fee: ₹0 in Tamil Nadu</strong><br>Application fee is FREE for TN state departments. Central RTI: ₹10 by IPO/DD. Copy charges: ₹2/page for both.</div></div>
+    <div class="rti-step"><div class="rti-step-num">4</div><div class="rti-step-body"><strong>Alternative: Speed Post</strong><br>Write on plain paper. Address to PIO of department. Send by Speed Post. Keep tracking receipt — that\'s your proof of filing.</div></div>
+    <div class="rti-step"><div class="rti-step-num">5</div><div class="rti-step-body"><strong>30-day reply rule</strong><br>PIO must respond within 30 days. No response? File First Appeal within 30 days to the same department\'s First Appellate Authority.</div></div>
+    <div class="rti-step"><div class="rti-step-num">6</div><div class="rti-step-body"><strong>Still no response? SIC.</strong><br>File Second Appeal with Tamil Nadu State Information Commission within 90 days. Website: <a href="https://tnsic.tn.gov.in" target="_blank" style="color:var(--blue);">tnsic.tn.gov.in</a>. PIO can be fined ₹250/day up to ₹25,000.</div></div>
+    <div style="background:rgba(255,77,46,.06);border:1px solid rgba(255,77,46,.15);border-radius:12px;padding:12px;font-size:12px;color:#fca5a5;line-height:1.6;margin-top:4px;">
+      ⚠️ TN does not yet have a single online portal for all state departments. Some departments are on rtionline.tn.gov.in — others still require Speed Post. Our AI Draft tab will tell you which path to use.
+    </div>
+  </div>
+
+  <!-- AI DRAFT TAB -->
+  <div id="rti-ai" style="padding:0 16px;display:none;">
+    <div style="font-size:14px;font-weight:700;font-family:'Syne',sans-serif;margin-bottom:4px;">AI RTI Drafter</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px;">Describe your issue — get a legally precise RTI application</div>
+    <div class="inp-label">Describe your problem in plain language</div>
+    <textarea class="inp" id="ai-rti-input" placeholder="E.g.: The road in front of my house was dug up 6 months ago and never repaired. I want to know who was contracted to do this, how much was paid, and why it hasn\'t been completed." style="min-height:100px;margin-bottom:10px;"></textarea>
+    <button class="btn btn-primary" onclick="draftRTIWithAI()" style="font-family:'Syne',sans-serif;font-size:15px;margin-bottom:14px;">Draft with AI →</button>
+    <div id="ai-rti-loading" style="display:none;text-align:center;padding:20px;color:var(--muted);font-size:13px;">✍️ Drafting your RTI application...</div>
+    <div id="ai-rti-result" style="display:none;">
+      <div style="font-size:12px;font-weight:700;color:var(--green);margin-bottom:8px;">✓ RTI Draft Ready</div>
+      <textarea class="inp" id="ai-rti-text" style="min-height:220px;font-size:11px;line-height:1.8;" readonly></textarea>
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        <button class="ctab ctabg" style="flex:1;" onclick="copyAIDraft()">Copy Draft</button>
+        <button class="ctab ctabo" style="flex:1;" onclick="window.open('https://rtionline.tn.gov.in','_blank')">File on TN Portal →</button>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5;">After filing, note your registration number and track under the Track tab. Keep the Speed Post receipt if filing by post.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== HEROES ====== -->
+<div id="s-heroes" class="screen">
+  <div class="s-head"><h2>Guardian Heroes</h2><p>Chennai\'s civic champions</p></div>
+  <div class="tab-row" style="padding:0 16px 14px;display:flex;gap:8px;">
+    <button class="tab-btn active" onclick="heroTab('h-stories',this)">Stories</button>
+    <button class="tab-btn" onclick="heroTab('h-lb',this)">Leaderboard</button>
+    <button class="tab-btn" onclick="heroTab('h-join',this)">Join</button>
+  </div>
+
+  <!-- STORIES -->
+  <div id="h-stories">
+    <div class="card" style="padding:16px;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+        <div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,var(--a),var(--gold));display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">⭐</div>
+        <div><div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;">KavithaRTI</div><div style="font-size:12px;color:var(--muted);">Mylapore Ward 108 · Verified Hero</div></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;"><span class="tag tag-green">34 Issues</span><span class="tag tag-blue">12 RTIs Filed</span><span class="tag tag-gold">₹8.2L Recovered</span></div>
+      <p style="font-size:13px;color:var(--muted);line-height:1.6;font-style:italic;">"I was a scared housewife when I filed my first RTI about the broken manhole outside my house. The GCC gave me a nonsense reply. I filed an appeal. They came and fixed it in 8 days. That was 3 years ago. Now I\'ve filed 12 RTIs, and I help others do the same. Anyone can do this."</p>
+      <div style="font-size:12px;color:var(--a);margin-top:8px;font-weight:600;">Speciality: GCC civic complaints, school fees, RTI appeals</div>
+    </div>
+
+    <div class="card" style="padding:16px;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+        <div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,var(--blue),var(--purple));display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">⚖️</div>
+        <div><div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;">Murugesan_K</div><div style="font-size:12px;color:var(--muted);">Perambur Ward 67 · Civic Champion</div></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;"><span class="tag tag-green">19 Issues</span><span class="tag tag-blue">8 RTIs Filed</span><span class="tag tag-gold">₹4.6L Recovered</span></div>
+      <p style="font-size:13px;color:var(--muted);line-height:1.6;font-style:italic;">"My employer stole 18 months of my PF. HR said the law doesn\'t apply to us. I knew they were lying. I filed RTI to EPFO. The document showed zero deposits. Enforcement came. I got it all back with interest. The law works if you know it."</p>
+      <div style="font-size:12px;color:var(--blue);margin-top:8px;font-weight:600;">Speciality: Labour law, PF complaints, EPFO RTIs</div>
+    </div>
+
+    <div class="card" style="padding:16px;">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+        <div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,var(--green),#16a34a);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">📍</div>
+        <div><div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;">Mylapore_Priya</div><div style="font-size:12px;color:var(--muted);">Mylapore · Civic Champion</div></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;"><span class="tag tag-green">28 Issues</span><span class="tag tag-blue">5 RTIs</span><span class="tag tag-gold">3 Schools Penalised</span></div>
+      <p style="font-size:13px;color:var(--muted);line-height:1.6;font-style:italic;">"The school asked for ₹2.5 lakhs. When I asked why, they said \'everyone pays it.\' I didn\'t. I complained to the DEO with RTE Section 13 cited clearly. They got a notice. The money was never collected. Three other parents in my building followed."</p>
+      <div style="font-size:12px;color:var(--green);margin-top:8px;font-weight:600;">Speciality: Education rights, RTE complaints, school fee regulation</div>
+    </div>
+  </div>
+
+  <!-- LEADERBOARD -->
+  <div id="h-lb" style="display:none;padding:0 16px;">
+    <div style="display:flex;gap:6px;margin-bottom:14px;">
+      <button class="tab-btn active" onclick="switchLB('ward',this)">Ward</button>
+      <button class="tab-btn" onclick="switchLB('city',this)">City</button>
+      <button class="tab-btn" onclick="switchLB('monthly',this)">Monthly</button>
+    </div>
+    <div class="lb-row"><div class="lb-rank gold">1</div><div style="flex:1;"><div style="font-size:13px;font-weight:600;">KavithaRTI</div><div style="font-size:11px;color:var(--muted);">Mylapore · 34 issues</div></div><span class="tag tag-gold" style="font-size:10px;">1,240 pts</span></div>
+    <div class="lb-row"><div class="lb-rank silver">2</div><div style="flex:1;"><div style="font-size:13px;font-weight:600;">Mylapore_Priya</div><div style="font-size:11px;color:var(--muted);">Mylapore · 28 issues</div></div><span class="tag tag-blue" style="font-size:10px;">980 pts</span></div>
+    <div class="lb-row"><div class="lb-rank bronze">3</div><div style="flex:1;"><div style="font-size:13px;font-weight:600;">Murugesan_K</div><div style="font-size:11px;color:var(--muted);">Perambur · 19 issues</div></div><span class="tag tag-green" style="font-size:10px;">740 pts</span></div>
+    <div class="lb-row"><div class="lb-rank" style="color:var(--muted);">4</div><div style="flex:1;"><div style="font-size:13px;font-weight:600;">T_Nagar_Murugan</div><div style="font-size:11px;color:var(--muted);">T.Nagar · 15 issues</div></div><span class="tag" style="font-size:10px;background:rgba(255,255,255,.05);color:var(--muted);border:1px solid var(--border);">580 pts</span></div>
+    <div class="lb-row"><div class="lb-rank" style="color:var(--muted);">5</div><div style="flex:1;"><div style="font-size:13px;font-weight:600;">RTI_Rajan</div><div style="font-size:11px;color:var(--muted);">Egmore · 11 issues</div></div><span class="tag" style="font-size:10px;background:rgba(255,255,255,.05);color:var(--muted);border:1px solid var(--border);">420 pts</span></div>
+  </div>
+
+  <!-- JOIN -->
+  <div id="h-join" style="display:none;padding:0 16px;">
+    <div style="background:rgba(255,77,46,.06);border:1px solid rgba(255,77,46,.15);border-radius:14px;padding:16px;margin-bottom:14px;text-align:center;">
+      <div style="font-size:28px;margin-bottom:6px;">🛡️</div>
+      <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;margin-bottom:4px;">Become a Guardian</div>
+      <div style="font-size:12px;color:var(--muted);">Join 47 citizens protecting Chennai\'s rights</div>
+    </div>
+    <div class="inp-label">Your Name</div>
+    <input class="inp" id="g-name" placeholder="How you\'ll appear to other guardians" style="margin-bottom:10px;">
+    <div class="inp-label">Ward / Area</div>
+    <input class="inp" id="g-ward" placeholder="e.g. Mylapore Ward 108" style="margin-bottom:10px;">
+    <div class="inp-label">Guardian Speciality</div>
+    <select class="inp" id="g-spec" style="margin-bottom:10px;">
+      <option>RTI Filing</option>
+      <option>Legal Research</option>
+      <option>Community Organizing</option>
+      <option>Documentation / Evidence</option>
+      <option>Media / Press Contact</option>
+      <option>Witness Support</option>
+      <option>Translation (Tamil/English)</option>
+    </select>
+    <div class="inp-label">Guardian Pledge</div>
+    <div style="background:rgba(34,197,94,.05);border:1px solid rgba(34,197,94,.15);border-radius:12px;padding:12px;font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:14px;">
+      "I pledge to support fellow citizens asserting their legal rights. I will show up, document, and stand firm. I will not be intimidated into silence."
+    </div>
+    <button class="btn btn-primary" onclick="joinGuardian(this)" style="font-family:'Syne',sans-serif;font-size:15px;">I Take the Pledge 🛡️</button>
+  </div>
+</div>
+
+
+<!-- ====== BOTTOM NAV ====== -->
+<nav id="nav">
+  <button class="nav-btn active" id="nav0" onclick="goTo('s-home',0)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    Home
+  </button>
+  <button class="nav-btn" id="nav1" onclick="goTo('s-news',1)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8M15 18h-5M10 6h8v4h-8z"/></svg>
+    News
+  </button>
+  <button class="nav-btn" id="nav2" onclick="goTo('s-legal',2)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    Legal
+  </button>
+  <button class="nav-btn" id="nav3" onclick="goTo('s-reps',3)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    Reps
+  </button>
+  <button class="nav-btn" id="nav4" onclick="goTo('s-rti',4)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+    RTI
+  </button>
+</nav>
+
+<!-- ====== LEGAL OVERLAY ====== -->
+<div class="overlay" id="legal-overlay" onclick="closeLegal(event)">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div id="legal-content"></div>
+  </div>
+</div>
+
+<!-- ====== VIOLATION OVERLAY ====== -->
+<div class="overlay" id="viol-overlay" onclick="closeViol(event)">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div id="viol-content"></div>
+  </div>
+</div>
+
+<!-- ====== VM OVERLAY (lawyer/complaint/letter) ====== -->
+<div class="overlay" id="vm-overlay" onclick="closeVM(event)">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div id="vm-content"></div>
+  </div>
+</div>
+
+<!-- ====== PLAYBOOK OVERLAY ====== -->
+<div class="playbook-overlay" id="pb-overlay" onclick="closePBOuter(event)">
+  <div class="playbook-sheet" id="pb-sheet">
+    <div class="sheet-handle"></div>
+    <div id="pb-content"></div>
+  </div>
+</div>
+
+<!-- ====== THREAT OVERLAY ====== -->
+<div class="overlay" id="threat-overlay">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div style="text-align:center;margin-bottom:16px;">
+      <div style="font-size:32px;margin-bottom:8px;">🛡️</div>
+      <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:var(--a);">Guardian Network</div>
+      <div style="font-size:13px;color:var(--muted);margin-top:4px;">Activating emergency civic support</div>
+    </div>
+    <div style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.15);border-radius:12px;padding:14px;text-align:center;margin-bottom:14px;">
+      <div style="font-family:'Syne',sans-serif;font-size:15px;font-weight:700;color:var(--green);">Be brave. 47 Guardians have your back.</div>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px;font-weight:600;">ROLES BEING ASSIGNED:</div>
+    <div id="role-counter" style="font-size:12px;color:var(--muted);margin-bottom:10px;">0/5 roles filled</div>
+    <div id="role-rows">
+      <div class="role-row" id="role0"><span style="font-size:20px;">👁️</span><div style="flex:1;"><div style="font-size:13px;font-weight:600;">Witness</div><div style="font-size:11px;color:var(--muted);">Waiting...</div></div><span id="role0-status" style="font-size:10px;color:var(--muted);">—</span></div>
+      <div class="role-row" id="role1"><span style="font-size:20px;">📷</span><div style="flex:1;"><div style="font-size:13px;font-weight:600;">Documenter</div><div style="font-size:11px;color:var(--muted);">Waiting...</div></div><span id="role1-status" style="font-size:10px;color:var(--muted);">—</span></div>
+      <div class="role-row" id="role2"><span style="font-size:20px;">📋</span><div style="flex:1;"><div style="font-size:13px;font-weight:600;">Filer</div><div style="font-size:11px;color:var(--muted);">Waiting...</div></div><span id="role2-status" style="font-size:10px;color:var(--muted);">—</span></div>
+      <div class="role-row" id="role3"><span style="font-size:20px;">📰</span><div style="flex:1;"><div style="font-size:13px;font-weight:600;">Press Contact</div><div style="font-size:11px;color:var(--muted);">Waiting...</div></div><span id="role3-status" style="font-size:10px;color:var(--muted);">—</span></div>
+      <div class="role-row" id="role4"><span style="font-size:20px;">⚖️</span><div style="flex:1;"><div style="font-size:13px;font-weight:600;">Lawyer Liaison</div><div style="font-size:11px;color:var(--muted);">Waiting...</div></div><span id="role4-status" style="font-size:10px;color:var(--muted);">—</span></div>
+    </div>
+    <div id="network-banner" style="display:none;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:12px;padding:12px;text-align:center;margin-top:10px;">
+      <div style="font-size:16px;font-weight:700;color:var(--green);font-family:'Syne',sans-serif;">✓ Guardian network fully mobilised</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px;">Legal team briefed. Lawyer: <a href="tel:9840341381" style="color:var(--green);font-weight:700;">Mr. Maddy Mathew — 9840341381</a></div>
+    </div>
+    <button class="btn btn-outline" style="margin-top:14px;" onclick="closeThreat()">Close</button>
+  </div>
+</div>
+
+<!-- ====== REPORT OVERLAY ====== -->
+<!-- ====== COURAGE MODAL ====== -->
+<div class="courage-overlay" id="courage-overlay">
+  <div class="courage-box">
+    <div style="font-size:40px;margin-bottom:12px;">🦁</div>
+    <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;margin-bottom:8px;">Be Brave.</div>
+    <div style="font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:16px;">47 Guardians have your back. Filing this RTI is your legal right. The law protects you.</div>
+    <div style="background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:12px;padding:14px;margin-bottom:16px;font-size:13px;color:var(--green);line-height:1.6;">
+      ✓ You cannot be punished for filing RTI<br>
+      ✓ Giving false RTI response is punishable<br>
+      ✓ Lawyer on call: <a href="tel:9840341381" style="color:var(--green);font-weight:700;">Mr. Maddy Mathew</a>
+    </div>
+    <button class="btn btn-primary" onclick="fileRTI()" style="font-family:'Syne',sans-serif;font-size:14px;margin-bottom:8px;">I am ready. File my RTI →</button>
+    <button class="btn btn-outline" onclick="hideCouragePrompt()" style="font-size:13px;">Not now</button>
+  </div>
+</div>
+
+<!-- ====== ISSUE THREAD (full page, Reddit-style) ====== -->
+<div id="s-issue" class="screen" style="padding-bottom:140px;">
+  <!-- sticky top bar -->
+  <div style="position:sticky;top:0;background:rgba(10,10,10,.97);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);padding:12px 16px;display:flex;align-items:center;gap:12px;z-index:10;">
+    <button onclick="goTo('s-home',0)" style="background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:10px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:16px;color:var(--text);flex-shrink:0;">←</button>
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:10px;color:var(--a);font-weight:700;letter-spacing:.08em;text-transform:uppercase;">Issue Thread</div>
+      <div id="thread-ward" style="font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+    </div>
+    <div style="font-size:12px;color:var(--muted);flex-shrink:0;"><span id="thread-comment-count">0</span> voices</div>
+  </div>
+
+  <!-- issue detail card -->
+  <div style="padding:16px;border-bottom:1px solid var(--border);">
+    <div id="thread-tags" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;"></div>
+    <div id="thread-title" style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;line-height:1.35;margin-bottom:8px;"></div>
+    <div id="thread-body" style="font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:12px;"></div>
+    <!-- progress -->
+    <div class="prog-track"><div id="thread-prog" class="prog-bar" style="width:0%;"></div></div>
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:6px;">
+      <span id="thread-votes">0 upvotes</span><span>100 → auto-escalation</span>
+    </div>
+    <div id="thread-badge" class="escalation-badge" style="margin-bottom:12px;"></div>
+    <!-- meta -->
+    <div style="display:flex;align-items:center;justify-content:space-between;">
+      <div style="font-size:12px;color:var(--muted);">Filed by <strong id="thread-author" style="color:var(--text);"></strong></div>
+      <div style="font-size:11px;color:var(--muted);" id="thread-ref"></div>
+    </div>
+    <!-- action bar -->
+    <div class="issue-bar" style="margin-top:10px;">
+      <button class="ib" id="thread-uv" onclick="upvoteThread()">▲ <span id="thread-uv-n">0</span></button>
+      <button class="ib" id="thread-share" onclick="shareThread()">↗</button>
+      <button class="ib" id="thread-tweet" onclick="tweetThread()">𝕏</button>
+      <button class="ib" onclick="document.getElementById('comment-inp').focus()">💬 Comment</button>
+    </div>
+    <div class="guardian-strip" style="margin-top:10px;">🛡️ <strong>Be brave. 47 Guardians have your back.</strong></div>
+  </div>
+
+  <!-- sort bar -->
+  <div style="padding:10px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);">
+    <div style="font-size:13px;font-weight:700;">Discussion</div>
+    <div style="display:flex;gap:6px;">
+      <button class="sort-btn active" onclick="sortComments('top',this)" style="font-size:11px;padding:4px 10px;border-radius:99px;border:1px solid var(--border);background:rgba(255,77,46,.15);color:var(--a);cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;">Top</button>
+      <button class="sort-btn" onclick="sortComments('new',this)" style="font-size:11px;padding:4px 10px;border-radius:99px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;">New</button>
+    </div>
+  </div>
+
+  <!-- comments feed -->
+  <div id="thread-comments" style="padding:0 16px;"></div>
+
+  <!-- compose bar — sticky bottom -->
+  <div style="position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:rgba(10,10,10,.97);backdrop-filter:blur(16px);border-top:1px solid var(--border);padding:10px 16px 80px;display:flex;gap:8px;z-index:55;">
+    <input class="inp" id="comment-inp" placeholder="Add your voice to this issue..." style="flex:1;padding:10px 12px;font-size:13px;">
+    <button onclick="postComment()" style="background:var(--a);border:none;border-radius:12px;padding:10px 16px;color:#fff;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:14px;flex-shrink:0;">Post</button>
+  </div>
+</div>
+
+</div><!-- end #app -->
+
+<div class="report-overlay" id="report-overlay">
+  <div class="sheet" id="report-sheet">
+    <div class="sheet-handle"></div>
+
+    <!-- STEP 1: ISSUE FORM -->
+    <div id="rep-step1">
+      <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;margin-bottom:2px;">Report a Civic Issue</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:16px;">Help your community — fill in the details below</div>
+
+      <div class="inp-label">City</div>
+      <select class="inp" id="rep-city" style="margin-bottom:10px;">
+        <option value="">Select city…</option>
+        <option>Chennai</option>
+        <option>Coimbatore</option>
+        <option>Madurai</option>
+        <option>Tiruchirappalli</option>
+        <option>Salem</option>
+        <option>Tirunelveli</option>
+        <option>Other TN City</option>
+      </select>
+
+      <div class="inp-label">Area / Locality</div>
+      <input class="inp" id="rep-area" placeholder="e.g. Mylapore, T.Nagar, Anna Nagar…" style="margin-bottom:10px;">
+
+      <div class="inp-label">Ward Number (if known)</div>
+      <input class="inp" id="rep-wardnum" placeholder="e.g. Ward 108  —  check GCC website or ward board" style="margin-bottom:10px;">
+
+      <div class="inp-label">Exact Location / Address</div>
+      <input class="inp" id="rep-location" placeholder="Paste Google Maps link or type street address" style="margin-bottom:10px;">
+
+      <div class="inp-label">Type of Issue</div>
+      <select class="inp" id="rep-type" style="margin-bottom:10px;">
+        <option value="">Select issue type…</option>
+        <option>🚰 Sewage / Drainage overflow</option>
+        <option>💡 Street light not working</option>
+        <option>🏗️ Road damage / Pothole</option>
+        <option>🚧 Dug road not restored</option>
+        <option>🗑️ Garbage not collected</option>
+        <option>🌊 Water supply problem</option>
+        <option>⚡ Power outage / TANGEDCO</option>
+        <option>🏫 School / Education violation</option>
+        <option>🏥 Hospital / Healthcare issue</option>
+        <option>👮 Police / Government issue</option>
+        <option>💼 Labour / PF violation</option>
+        <option>🏗️ Illegal construction</option>
+        <option>🌳 Tree / Environment issue</option>
+        <option>🚌 Transport / Auto issue</option>
+        <option>📋 Other civic issue</option>
+      </select>
+
+      <div class="inp-label">Issue Details</div>
+      <textarea class="inp" id="rep-desc" placeholder="Describe what is happening, how long it has been going on, and who you have already contacted (if anyone)." style="min-height:90px;margin-bottom:10px;"></textarea>
+
+      <div class="inp-label">Photos (optional)</div>
+      <div style="display:flex;gap:8px;margin-bottom:14px;">
+        <button onclick="document.getElementById('rep-cam').click()" style="flex:1;padding:11px;background:rgba(255,77,46,.1);border:1px solid rgba(255,77,46,.25);border-radius:12px;color:var(--a);font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">📷 Camera</button>
+        <button onclick="document.getElementById('rep-gal').click()" style="flex:1;padding:11px;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:12px;color:var(--text);font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;">🖼️ Gallery</button>
+      </div>
+      <input type="file" id="rep-cam" style="display:none;" accept="image/*" capture="environment" onchange="repPhotoAdded(this)">
+      <input type="file" id="rep-gal" style="display:none;" multiple accept="image/*" onchange="repPhotoAdded(this)">
+      <div id="rep-photo-label" style="font-size:12px;color:var(--green);margin-bottom:4px;"></div>
+
+      <button class="btn btn-primary" style="font-family:'Syne',sans-serif;font-size:15px;" onclick="repStep1Submit()">Continue →</button>
+      <button class="btn btn-outline" style="margin-top:8px;font-size:13px;" onclick="document.getElementById('report-overlay').classList.remove('open')">Cancel</button>
+    </div>
+
+    <!-- STEP 2: SIGN UP POPUP -->
+    <div id="rep-step2" style="display:none;text-align:center;">
+      <div style="font-size:36px;margin-bottom:12px;">🛡️</div>
+      <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;margin-bottom:6px;">Almost there!</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.6;">Create a free account to submit your issue and join the Guardian Network. Your issue will go live immediately.</div>
+
+      <div class="inp-label" style="text-align:left;">Your Name</div>
+      <input class="inp" id="rep-name" placeholder="Full name" style="margin-bottom:10px;">
+
+      <div class="inp-label" style="text-align:left;">Mobile Number</div>
+      <input class="inp" id="rep-phone" placeholder="+91 XXXXXXXXXX" type="tel" style="margin-bottom:10px;">
+
+      <div class="inp-label" style="text-align:left;">Email (optional)</div>
+      <input class="inp" id="rep-email" placeholder="For updates on your issue" type="email" style="margin-bottom:16px;">
+
+      <div style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.15);border-radius:12px;padding:12px;font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:16px;text-align:left;">
+        ✓ Your issue will be posted publicly for community upvoting<br>
+        ✓ You'll be notified when guardians respond<br>
+        ✓ Your contact stays private — only shown to Mr. Maddy Mathew if legal help is needed
+      </div>
+
+      <button class="btn btn-primary" style="font-family:'Syne',sans-serif;font-size:15px;" onclick="repFinalSubmit()">Submit Issue 🚀</button>
+      <button class="btn btn-outline" style="margin-top:8px;font-size:13px;" onclick="repBackToStep1()">← Back</button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ====== LEGAL DATA ======
+var LD = {
+  school: { n:'Schools & Education', i:'🏫', v:[
+    { t:'School demands donation / capitation fee before or after admission',
+      nm:'"Development Fund" or "Voluntary Contribution"',
+      re:'School asked for ₹2–10L before/after admission as informal condition. Often called "building fund" or "management contribution."',
+      la:'RTE Act 2009 Section 13 strictly bans all capitation fees. Any amount demanded as a condition of admission is illegal regardless of the name given.',
+      sa:'This demand is not in your published fee schedule. Under RTE Section 13, any capitation fee demand is illegal. I will report this to the DEO and State School Fees Regulatory Committee if it is not withdrawn.',
+      fi:'DEO (District Education Officer) Chennai · State School Fees Regulatory Committee' },
+    { t:'School rejecting child due to parent\'s language, occupation or religion',
+      nm:'Admission criteria restriction',
+      re:'School refuses admission citing parents\' non-Tamil background, caste, occupation, or religion as informal reason.',
+      la:'RTE Act 2009 Section 12 & Constitution Article 29(2) prohibit denial of admission on grounds of religion, race, caste, language, or any of them.',
+      sa:'This rejection violates RTE Section 12 and Article 29(2) of the Constitution. I am filing a complaint with the DEO today. Please provide written rejection with stated reasons.',
+      fi:'DEO Chennai · State Human Rights Commission · Madras High Court' },
+    { t:'Private school denying 25% free RTE quota seat',
+      nm:'RTE quota non-compliance',
+      re:'School claims 25% reserved seats are "filled" or demands fees anyway. Many private schools illegally charge the EWS/DG students despite government reimbursement.',
+      la:'RTE Act Section 12(1)(c) mandates 25% seats for economically weaker sections / disadvantaged groups. Violation is punishable under Section 18.',
+      sa:'You are required to admit eligible EWS/DG children and claim reimbursement from the government. Denial is punishable under RTE Section 18. I am reporting this to the DEO.',
+      fi:'DEO Chennai · Samagra Shiksha office · RTE Grievance Portal' },
+    { t:'School announcing fee hike beyond state-approved limits',
+      nm:'Unauthorised fee revision',
+      re:'School raises fees by 20–50% without State Fees Committee approval. Sends WhatsApp messages asking parents to "pay by Friday or lose the seat."',
+      la:'Tamil Nadu Private Schools (Regulation) Act and State School Fees Regulatory Committee rules cap fee hikes. Unilateral hikes without approval are illegal.',
+      sa:'Fee revisions require prior approval from the Tamil Nadu School Fees Regulatory Committee. I am not paying unauthorised amounts and am filing a complaint with the Committee.',
+      fi:'Tamil Nadu School Fees Regulatory Committee · DEO · Consumer Forum' },
+    { t:'School forcing purchase of uniforms, books from specific shop',
+      nm:'Tied purchase requirement',
+      re:'School insists parents buy from a particular stationery shop or uniform supplier at inflated prices. Refuses to provide issuance note for other shops.',
+      la:'NCPCR guidelines and TN Education Dept circulars prohibit schools from making purchases mandatory from specific outlets. This is a consumer protection violation.',
+      sa:'Directing parents to specific commercial outlets violates NCPCR guidelines. I will file complaint with DEO and report to Consumer Forum under Consumer Protection Act 2019.',
+      fi:'NCPCR Helpline 1800-180-1891 · DEO · District Consumer Disputes Redressal Commission' }
+  ]},
+  hospital: { n:'Hospitals & Healthcare', i:'🏥', v:[
+    { t:'Hospital refuses to hand over medical records / discharge summary',
+      nm:'Record withholding',
+      re:'Hospital says records will be given "only if you settle the full bill" or keeps original X-rays claiming they "belong to the hospital."',
+      la:'MCI Code of Medical Ethics Regulation 1.3.2 mandates providing medical records within 72 hours. Consumer Protection Act 2019 covers medical negligence.',
+      sa:'Under MCI Ethics Regulations 1.3.2, you are required to provide my complete medical records within 72 hours of request. I will file complaint with Tamil Nadu Medical Council if not provided.',
+      fi:'Tamil Nadu Medical Council · National Consumer Helpline 1915 · District Consumer Forum' },
+    { t:'Private hospital charges more than displayed price list (MRP violation)',
+      nm:'Price list non-compliance',
+      re:'Hospital MRP list is displayed but actual bill shows higher rates. Separate charges for "service tax" or "admin fee" not in the displayed list.',
+      la:'Clinical Establishments Act and TN Hospitals regulation require price display. Consumer Protection Act 2019 Section 2(28) covers unfair trade practice.',
+      sa:'The bill exceeds your displayed price list. This is an unfair trade practice under Consumer Protection Act 2019. I am requesting an itemised bill and will approach the District Consumer Forum.',
+      fi:'Tamil Nadu Hospital Licensing Authority · District Consumer Disputes Redressal Commission · Helpline 1915' },
+    { t:'Hospital detains patient / body against unsettled bill',
+      nm:'Wrongful detention',
+      re:'Hospital refuses to discharge patient or release body of deceased until full payment is made, including disputed charges.',
+      la:'Madras High Court has ruled patient/body detention for payment is illegal (W.P.No.27100/2020). This also constitutes wrongful confinement under IPC Section 340.',
+      sa:'Detaining a patient or body for payment is illegal under Madras HC ruling. This also constitutes wrongful confinement under IPC Section 340. I am contacting the hospital\'s Medical Superintendent and the Police.',
+      fi:'Medical Superintendent (file written complaint) · Police Station (IPC 340) · Madras HC emergency writ' },
+    { t:'Doctor refuses to issue prescription or give diagnosis in writing',
+      nm:'Prescription withholding',
+      re:'Doctor gives verbal advice only and refuses to provide written prescription, saying "come back to our pharmacy" or "buy it yourself."',
+      la:'MCI Ethics Regulations mandate written prescriptions. Withholding is professional misconduct.',
+      sa:'Under MCI Ethics Regulations, a written prescription is my right. Refusal is professional misconduct. Please provide in writing or I will file complaint with Tamil Nadu Medical Council.',
+      fi:'Tamil Nadu Medical Council · National Medical Commission' }
+  ]},
+  hotel: { n:'Hotels & Public Spaces', i:'🏨', v:[
+    { t:'Restaurant / hotel charges more than printed menu price',
+      nm:'Price overcharging',
+      re:'Bill shows higher price than what is printed on the menu. GST added on top of menu price that "already includes service charge."',
+      la:'Consumer Protection Act 2019 Section 2(47) defines unfair trade practice. FSSAI regulations require price display. Charging above menu price is illegal.',
+      sa:'You are required to charge only the menu price. Any excess charge is an unfair trade practice under Consumer Protection Act 2019. I require a corrected bill.',
+      fi:'National Consumer Helpline 1915 · District Consumer Disputes Redressal Commission · FSSAI Portal' },
+    { t:'Hotel refuses entry or service based on caste, religion or appearance',
+      nm:'Discriminatory denial of service',
+      re:'Establishment refuses entry saying "members only," "private party," or makes discriminatory comment about caste or religion.',
+      la:'Civil Rights Protection Act 1955, Tamil Nadu Public Places (Prevention of Indecent Acts) Act, and Article 15 of the Constitution prohibit caste/religion-based discrimination in public services.',
+      sa:'Denial of service based on caste or religion violates Civil Rights Protection Act 1955 and Article 15. I am filing a complaint with the Police and Tamil Nadu Prohibition of Discrimination Commission.',
+      fi:'Local Police Station · SC/ST Cell Chennai · National Human Rights Commission' },
+    { t:'Bar/hotel adds mandatory "service charge" on bill',
+      nm:'Forced service charge',
+      re:'Hotel automatically adds 10–15% service charge stating "mandatory." Customer not told this is optional.',
+      la:'CCPA guidelines (July 2022) explicitly state that service charge cannot be collected as a mandatory levy. Consumers can refuse to pay it.',
+      sa:'Per CCPA guidelines issued July 2022, service charge cannot be mandatory. I am paying only for the food and GST. Please revise my bill accordingly.',
+      fi:'National Consumer Helpline 1915 · CCPA complaint portal' }
+  ]},
+  labour: { n:'Workplace & Labour', i:'👷', v:[
+    { t:'Employer deducting PF but not depositing to EPFO',
+      nm:'PF diversion / fraud',
+      re:'Pay slip shows PF deduction but EPFO passbook shows zero or partial deposits. Employer claims "we filed it." EPFO balance doesn\'t match months of deductions.',
+      la:'Employees\' Provident Funds Act 1952 Section 14B imposes penalty for delayed deposits. Diversion of PF deductions is criminal fraud under IPC.',
+      sa:'RTI to EPFO (rtionline.gov.in — Ministry of Labour) will confirm deposit status. Complaint to EPFO enforcement officer triggers inspection within 30 days.',
+      fi:'EPFO Regional Commissioner Chennai · Labour Enforcement Officer · EPFO Helpline 1800-118-005' },
+    { t:'Employer refusing to issue offer letter, salary slip or relieving letter',
+      nm:'Document denial',
+      re:'Company says "we don\'t give offer letters," pays in cash, or holds back experience/relieving certificate to prevent employee from leaving.',
+      la:'Shops and Establishments Act (Tamil Nadu) requires salary slips. Withholding experience certificates is an unfair labour practice under Industrial Employment (Standing Orders) Act.',
+      sa:'Under Tamil Nadu Shops and Establishments Act, you are required to provide salary slips and relieving letters. I am filing complaint with the Labour Inspector.',
+      fi:'Labour Inspector (TN Labour Dept) · Industrial Tribunal · Labour Commissioner Office Chennai' },
+    { t:'Company not paying minimum wages or making illegal deductions',
+      nm:'Wage theft',
+      re:'Company pays below state-prescribed minimum wage, makes deductions for "mistakes" or "damages," or withholds last month\'s salary on resignation.',
+      la:'Minimum Wages Act 1948 and Tamil Nadu Minimum Wages notification. Deductions not permitted under Payment of Wages Act 1936 are illegal.',
+      sa:'Payment below the notified minimum wage is a criminal offence under Minimum Wages Act 1948. I am filing complaint with Labour Inspector and claiming arrears with penalty.',
+      fi:'Labour Inspector · Assistant Commissioner of Labour · Labour Court Chennai' },
+    { t:'Sexual harassment at workplace — POSH non-compliance',
+      nm:'POSH violation',
+      re:'Company has no Internal Complaints Committee (ICC), management dismisses harassment complaint, or victim is transferred / terminated after complaining.',
+      la:'Sexual Harassment of Women at Workplace Act 2013 (POSH). Every employer with 10+ employees must have an ICC. Non-compliance is penalised under Section 26.',
+      sa:'Under POSH Act 2013, you are legally required to have a functioning ICC. I am filing complaint with the District Officer (Local Complaints Committee) if internal complaint is not registered.',
+      fi:'District Officer (LCC) Chennai · National Commission for Women · TN Women\'s Helpline 181' }
+  ]},
+  police: { n:'Police & Government', i:'🚔', v:[
+    { t:'Police refuses to register FIR',
+      nm:'FIR refusal',
+      re:'Police says "come back tomorrow," takes complaint verbatim but doesn\'t give FIR copy, or tries to convert cognisable offence to a mere complaint.',
+      la:'CrPC Section 154 mandates registration of FIR for cognisable offences. S.P./DSP has duty to act under Section 154(3). SC ruling in Lalita Kumari v State of U.P.',
+      sa:'Under CrPC Section 154 and Lalita Kumari judgment (SC 2014), you are legally bound to register my FIR for a cognisable offence. I am sending a written complaint to the SP/DSP.',
+      fi:'SP Chennai City · DSP (written complaint) · Judicial Magistrate (private complaint u/s 156(3))' },
+    { t:'Police threatening RTI filer or civic activist',
+      nm:'Intimidation of RTI filer',
+      re:'Police officer calling informally, saying "withdraw your complaint or face consequences," or showing up at home unannounced.',
+      la:'RTI Act Section 18(1)(f) protects complainants from harassment. Any intimidation of an RTI filer is an offence. State Police Complaints Authority.',
+      sa:'Threatening an RTI applicant is an offence. I am documenting this call/visit and filing complaint with the State Police Complaints Authority and State Information Commission.',
+      fi:'State Police Complaints Authority TN · Tamil Nadu SIC · Human Rights Commission' },
+    { t:'Illegal detention beyond 24 hours without production before magistrate',
+      nm:'Illegal detention',
+      re:'Police holding person beyond 24 hours without producing before a Magistrate.',
+      la:'Article 22 of the Constitution and CrPC Section 57: a person arrested cannot be detained beyond 24 hours without Magistrate\'s authorisation.',
+      sa:'Article 22 of the Constitution and CrPC Section 57 require production before a Magistrate within 24 hours. Continued detention is unlawful. File Habeas Corpus petition.',
+      fi:'Nearest Magistrate · Madras High Court (Habeas Corpus) · National Human Rights Commission 14433' }
+  ]},
+  banking: { n:'Banks & Consumer', i:'🏦', v:[
+    { t:'Bank charging hidden fees / deducting charges without consent',
+      nm:'Unauthorised bank charges',
+      re:'Bank deducts annual maintenance charges, SMS charges, or minimum balance penalties without prior disclosure. Charges appear with cryptic codes.',
+      la:'RBI Master Direction on Customer Service requires upfront disclosure of all charges. Consumer Protection Act 2019 covers unfair trade practices by banks.',
+      sa:'RBI mandates prior disclosure of all charges. These deductions were not disclosed. I am filing complaint with the Banking Ombudsman and requesting full reversal.',
+      fi:'RBI Banking Ombudsman (bankingombudsman.rbi.org.in) · RBI Helpline 14440' },
+    { t:'Bank refuses to close account or release Fixed Deposit prematurely',
+      nm:'Account closure refusal',
+      re:'Bank says account closure requires "branch manager approval" taking 45 days, or refuses to break FD citing internal policy.',
+      la:'RBI guidelines and customer rights under Banking Regulation Act give customers the right to close accounts. Banks cannot unreasonably delay or refuse.',
+      sa:'RBI guidelines require banks to process account closure requests promptly. This refusal has no legal basis. I am filing complaint with RBI Banking Ombudsman.',
+      fi:'RBI Banking Ombudsman · Bank\'s Grievance Cell · Consumer Forum' },
+    { t:'Insurance company rejecting valid claim without proper reason',
+      nm:'Claim rejection',
+      re:'Insurer rejects claim citing pre-existing condition not declared, though condition was disclosed. Or gives vague reason without detailed explanation.',
+      la:'IRDAI (Insurance Regulatory and Development Authority of India) protects policyholders. Consumer Protection Act 2019. IRDAI Circular requires specific written reason for rejection.',
+      sa:'Under IRDAI regulations, you must provide specific, written, reasoned rejection. Vague rejections are deficiency of service. I am approaching IRDAI Grievance Cell and Consumer Forum.',
+      fi:'IRDAI Grievance Cell 155255 · District Consumer Disputes Redressal Commission' }
+  ]},
+  women: { n:"Women's Rights & Safety", i:'👩', v:[
+    { t:'Domestic violence — physical, emotional or financial abuse',
+      nm:'Domestic abuse',
+      re:'Partner / family member physically abusing, controlling finances, making threats, or destroying property.',
+      la:'Protection of Women from Domestic Violence Act 2005. Right to reside in shared household, protection orders, monetary relief, child custody orders.',
+      sa:'DV Act 2005 entitles you to a protection order, residence order, and monetary relief. Contact the Protection Officer or NGO immediately. You do not need to leave your home.',
+      fi:'Police 100 · TN Women\'s Helpline 181 · SNEHI helpline 044-24640050 · District Protection Officer' },
+    { t:'Employer discriminating against pregnant employee / denying maternity leave',
+      nm:'Maternity rights violation',
+      re:'Employer terminates or demotes pregnant employee, refuses 26-week maternity leave, or withholds full pay during leave.',
+      la:'Maternity Benefit Act 1961 (amended 2017): 26 weeks paid leave for first 2 children, 12 weeks for third child. Dismissal during pregnancy is illegal.',
+      sa:'Maternity Benefit Act 2017 mandates 26 weeks paid leave. Termination/demotion during pregnancy is illegal under Section 12. I am filing complaint with Inspector of Factories / Labour Commissioner.',
+      fi:'Inspector (Labour Dept) · Labour Commissioner · National Commission for Women' },
+    { t:'Cybercrime — morphed photos, threats, online harassment',
+      nm:'Cyber harassment',
+      re:'Morphed images circulated, threatening messages from unknown accounts, impersonation, revenge porn.',
+      la:'IT Act 2008 Section 66E (privacy violation), Section 67 (obscene content), IPC Section 354D (cyberstalking). Punishable with imprisonment.',
+      sa:'This is a cognisable offence under IT Act Sections 66E, 67 and IPC Section 354D. I am filing FIR at Cyber Crime Police Station Chennai and on cybercrime.gov.in.',
+      fi:'Cyber Crime Police Station Chennai · cybercrime.gov.in · Helpline 1930' },
+    { t:'Eve teasing / molestation in public or transport',
+      nm:'Public sexual harassment',
+      re:'Harassment on bus, train, street. Perpetrator often bold because bystanders don\'t intervene or police minimise the complaint.',
+      la:'IPC Section 354A (sexual harassment, up to 3 years), Section 354 (assault on modesty). TN Prohibition of Harassment of Women Act 1998.',
+      sa:'This is a cognisable offence under IPC Section 354A. I am filing FIR at nearest police station. Women police stations are available in all Chennai districts.',
+      fi:'Women Police Station Chennai · 100 / 112 · TN Helpline 181' }
+  ]},
+  transport: { n:'Transport & Roads', i:'🚌', v:[
+    { t:'Auto / cab driver overcharging or refusing to use meter',
+      nm:'Meter refusal / overcharge',
+      re:'Auto driver quotes fixed price higher than meter, refuses to run meter, or adds arbitrary "surcharge."',
+      la:'MV Act 1988 and TN Motor Vehicles Rules: licensed autos must use government-approved meters. Overcharging is a punishable offence.',
+      sa:'Under MV Act 1988, you are required to use the government-approved meter. Refusal is a traffic offence. I am noting your registration number and complaining to Traffic Police.',
+      fi:'Traffic Police Helpline 1073 · RTO Chennai · CM Helpline 1100' },
+    { t:'Bus conductor refusing to give ticket or using cut tickets',
+      nm:'Ticket fraud',
+      re:'TNSTC conductor asks for exact change, refuses to issue ticket, or gives used/cut ticket instead.',
+      la:'TN Motor Vehicles Rules require ticket issuance for every journey. Conductor fraud is a criminal offence.',
+      sa:'Ticket issuance is mandatory under TN Motor Vehicles Rules. I am noting the bus number, route, and time. Complaint filed with TNSTC Divisional Manager.',
+      fi:'TNSTC Helpline 1800-425-1199 · District RTO · CM Grievance Cell' }
+  ]},
+  consumer: { n:'Consumer Rights', i:'🛒', v:[
+    { t:'E-commerce / delivery company refusing refund for defective product',
+      nm:'Refund denial',
+      re:'Amazon, Flipkart or other platform keeps delaying refund, closes ticket without resolution, or says "return window closed" for clearly defective item.',
+      la:'Consumer Protection Act 2019 and E-Commerce Rules 2020 require grievance officer, redressal within 48 hours, and refund for defective goods.',
+      sa:'Consumer Protection (E-Commerce) Rules 2020 require a grievance officer and resolution within 48 hours. I am filing complaint on the National Consumer Helpline and the INGRAM portal.',
+      fi:'National Consumer Helpline 1915 · INGRAM portal (consumerhelpline.gov.in) · District Consumer Forum' },
+    { t:'Builder delaying flat possession beyond promised date',
+      nm:'RERA delay',
+      re:'Builder claims "force majeure" for years of delay, demands further payments without fixing possession date, or changes agreement terms unilaterally.',
+      la:'RERA (Real Estate Regulation and Development Act 2016). Tamil Nadu TNRERA. Builder must refund with interest at SBI MCLR + 2% for delay, or pay compensation.',
+      sa:'Under RERA 2016 and TNRERA, I am entitled to full refund with interest at notified rate or compensation for delay. I am filing complaint on TNRERA portal today.',
+      fi:'TNRERA (tnrera.in) · Adjudicating Officer · Consumer Forum' }
+  ]}
+};
+
+// ====== PLAYBOOKS ======
+var PB = {
+  sewage: {
+    title:'Sewage RTI Playbook',
+    by:'KavithaRTI',
+    issue:'Sewage overflow / drainage blockage',
+    steps:[
+      { n:'Step 1 — Document first, complain second', t:'I made the mistake of calling the GCC helpline and expecting it to work. It didn\'t. Before anything else, photograph the problem with a timestamp. Note the GCC ward number — it\'s on the nearest street sign. This photo is your evidence later.' },
+      { n:'Step 2 — File complaint on GCC\'s 1913 helpline', t:'Call 1913 (GCC complaint line) or use the Fix My Street app. Note down the complaint number. Take a screenshot. This creates an official paper trail. Without it, they can deny receiving any complaint.' },
+      { n:'Step 3 — Wait 7 days. Nothing? File RTI.', t:'If the problem is not fixed in 7 days, file RTI to GCC asking: "What is the status of complaint number [X], who is the assigned engineer, and what is the resolution timeline?" Use rtionline.tn.gov.in. Application fee is zero.' },
+      { n:'Step 4 — RTI reply shows the delay, use it', t:'When the RTI response comes (30 days), it often shows the complaint was "closed" without fixing. That\'s your ammunition. Share it on your resident WhatsApp group. File a second complaint citing the RTI response.' },
+      { n:'Step 5 — Escalate to Ward Councillor with evidence', t:'Now approach your Ward Councillor with the dated photos, complaint number, and RTI response. This is no longer a verbal complaint — it\'s a documented demand. In my case, the road was fixed within 10 days of this meeting.' }
+    ]
+  },
+  pf: {
+    title:'PF Non-Deposit Playbook',
+    by:'Murugesan_K',
+    issue:'Employer stealing Employee Provident Fund',
+    steps:[
+      { n:'Step 1 — Check EPFO passbook first', t:'Go to the UMANG app or epfindia.gov.in. Check your PF passbook. If deductions show on your salary slip but the passbook shows zero or mismatch — your employer is stealing. This is not an assumption, it\'s fraud.' },
+      { n:'Step 2 — File RTI to EPFO (Central portal)', t:'File RTI on rtionline.gov.in to "Ministry of Labour — EPFO." Ask for "all PF deposits made by [employer name, establishment code] for employee UAN [your number] for the period [date range]." This gives you the official record of what was and wasn\'t deposited.' },
+      { n:'Step 3 — File complaint with EPFO Enforcement Officer', t:'Go to EPFO Regional Office, Royapettah. File written complaint with supporting documents — salary slips and EPFO passbook printout. The Enforcement Officer must inspect the employer within 15 days.' },
+      { n:'Step 4 — Involve Labour Commissioner if needed', t:'If EPFO is slow, file simultaneous complaint with the Labour Commissioner\'s office. Mention the RTI evidence. Section 14B of EPFO Act provides for interest and damages on top of the unpaid amount.' }
+    ]
+  },
+  school: {
+    title:'School Donation Fight Playbook',
+    by:'Mylapore_Priya',
+    issue:'School demanding illegal capitation fee',
+    steps:[
+      { n:'Step 1 — Get the demand in writing (they won\'t want to)', t:'The school will always keep it verbal. Say calmly: "I will pay whatever is required, but please give me the breakup in writing on school letterhead." They will either refuse — which is your evidence — or give it in writing — which is your complaint document.' },
+      { n:'Step 2 — Cite RTE Section 13 directly to the principal', t:'Say exactly: "This demand appears to violate RTE Act 2009 Section 13 which prohibits capitation fees. I am treating any payment beyond the official fee schedule as illegal." Record the meeting on your phone if possible.' },
+      { n:'Step 3 — File complaint with DEO same day', t:'Send an email to the District Education Officer, Chennai with: your child\'s name, school name, amount demanded, and a statement that this violates RTE Section 13. CC the State School Fees Regulatory Committee email.' },
+      { n:'Step 4 — Attach other parents\' testimony', t:'I found three other parents in the same situation. We filed jointly. The DEO took it far more seriously. WhatsApp groups are your best tool — parents talk. Collect 3–5 testimonials and attach to your complaint.' },
+      { n:'Step 5 — Follow up in 15 days with RTI', t:'If no action in 15 days, file RTI to DEO asking "What action has been taken on complaint dated [X] against [school name]?" This forces the DEO to put their inaction on record. Schools typically resolve once an RTI is filed.' }
+    ]
+  },
+  threat: {
+    title:'Threat & Intimidation Response',
+    by:'RTI_Rajan',
+    issue:'When someone tries to scare you into silence',
+    steps:[
+      { n:'Step 1 — Document the threat immediately', t:'The moment you receive a threatening call, message, or visit, write it down. Date, time, what was said, who said it, any witnesses. Take a screenshot of messages. This becomes your FIR. Do not delete anything.' },
+      { n:'Step 2 — Tell your guardian network before anything else', t:'Isolation is how intimidation works. I called two people from this app the moment I was threatened. Having witnesses to the intimidation changes the power dynamic. They want you to feel alone. You are not.' },
+      { n:'Step 3 — File FIR — IPC 506 (criminal intimidation)', t:'Go to the police station. File FIR under IPC Section 506 (criminal intimidation). If police refuse, file a written complaint to the DSP. Keep a copy. The very act of filing changes the equation.' },
+      { n:'Step 4 — RTI filers have explicit legal protection', t:'RTI Act Section 18 protects complainants from harassment. If the threat is related to an RTI you filed, report it to the State Information Commissioner. The SIC can initiate suo motu action against the public authority.' },
+      { n:'Step 5 — Keep filing. Do not withdraw.', t:'Withdrawing an RTI or complaint is exactly what they want. In my experience, threats are a sign that your RTI is hitting something real. Activate your guardian network, inform a lawyer, and keep the complaint alive. Silence enables corruption.' }
+    ]
+  }
+};
+
+// ====== ROLE FILLERS ======
+var roleFillers = [
+  {name:'KavithaRTI', role:'Witness', icon:'👁️', level:'Verified Hero', note:'Online · On call'},
+  {name:'T_Nagar_Murugan', role:'Documenter', icon:'📷', level:'Ward Guardian', note:'Timeline being updated'},
+  {name:'Mylapore_Priya', role:'Filer', icon:'📋', level:'Civic Champion', note:'3 RTIs filed today'},
+  {name:'Anonymous Hero', role:'Press Contact', icon:'📰', level:'Active Citizen', note:'The Hindu journalist alerted'},
+  {name:'Mr. Maddy Mathew', role:'Lawyer Liaison', icon:'⚖️', level:'Legal Counsel', note:'9840341381 · Briefed'}
+];
+
+// ====== STATE ======
+var currentCat = '';
+var currentViolIdx = 0;
+var roleTimer = null;
+var roleCount = 0;
+var uploadedFiles = [];
+
+// ====== NAVIGATION ======
+function goTo(sid, navIdx) {
+  document.querySelectorAll('.screen').forEach(function(s){ s.classList.remove('active'); });
+  var target = document.getElementById(sid);
+  if (target) { target.classList.add('active'); target.scrollTop = 0; }
+  document.querySelectorAll('.nav-btn').forEach(function(b){ b.classList.remove('active'); });
+  var nb = document.getElementById('nav' + navIdx);
+  if (nb) nb.classList.add('active');
+}
+
+// ====== UPVOTE ======
+function upvote(btn, id) {
+  if (btn.disabled) return;
+  var span = btn.querySelector('span');
+  var count = parseInt(span.textContent);
+  span.textContent = count + 1;
+  btn.classList.add('voted');
+  btn.innerHTML = '✓ Supported <span>' + (count + 1) + '</span>';
+  btn.disabled = true;
+}
+
+// ====== CHIP TOGGLE ======
+function togChip(el) {
+  el.classList.toggle('sel');
+}
+
+// ====== MATCH GUARDIAN ======
+function matchGuardian() {
+  var sel = document.querySelectorAll('#issue-chips .chip.sel');
+  var actions = {
+    'sewage': 'Sewage issues → File RTI to GCC citing complaint delay. KavithaRTI has won 8 similar cases in Mylapore.',
+    'labour': 'PF/Labour issues → RTI to EPFO + Labour Inspector complaint. Murugesan_K specialises in this.',
+    'school': 'School fee issues → DEO complaint + RTE Section 13 citation. Mylapore_Priya has cleared 3 schools.',
+    'default': 'File RTI to the relevant department. Your guardian will guide you step by step. Free legal support available.'
+  };
+  var text = actions['default'];
+  sel.forEach(function(c) {
+    var t = c.textContent.toLowerCase();
+    if (t.indexOf('sewage') > -1 || t.indexOf('road') > -1) text = actions['sewage'];
+    if (t.indexOf('labour') > -1 || t.indexOf('pf') > -1) text = actions['labour'];
+    if (t.indexOf('school') > -1) text = actions['school'];
+  });
+  document.getElementById('match-action').textContent = text;
+  document.getElementById('match-result').style.display = 'block';
+  document.getElementById('match-result').scrollIntoView({behavior:'smooth'});
+}
+
+// ====== LEGAL ======
+function showCategory(ck) {
+  currentCat = ck;
+  var cat = LD[ck];
+  if (!cat) return;
+  var html = '<div style="font-family:Syne,sans-serif;font-size:18px;font-weight:700;margin-bottom:4px;">' + cat.i + ' ' + cat.n + '</div>';
+  html += '<div style="font-size:12px;color:var(--muted);margin-bottom:16px);">Tap a violation to see the law and what to say</div><div style="height:8px;"></div>';
+  cat.v.forEach(function(v, i) {
+    html += '<div style="background:rgba(255,255,255,.04);border-radius:12px;padding:14px;margin-bottom:8px;cursor:pointer;border:1px solid var(--border);" onclick="showViolation(\'' + ck + '\',' + i + ')">';
+    html += '<div style="font-size:13px;font-weight:600;line-height:1.4;">' + v.t + '</div>';
+    html += '<div style="font-size:11px;color:var(--muted);margin-top:4px);">Tap to see the law →</div></div>';
+  });
+  html += '<div style="padding-bottom:20px;"></div>';
+  document.getElementById('legal-content').innerHTML = html;
+  document.getElementById('legal-overlay').classList.add('open');
+}
+
+function closeLegal(e) {
+  if (e && e.target !== document.getElementById('legal-overlay')) return;
+  document.getElementById('legal-overlay').classList.remove('open');
+}
+
+function showViolation(ck, idx) {
+  currentCat = ck;
+  currentViolIdx = idx;
+  var cat = LD[ck];
+  var v = cat.v[idx];
+  var html = '';
+  var hasNext = idx < cat.v.length - 1;
+  var hasPrev = idx > 0;
+  html += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">';
+  html += '<div style="font-size:12px;color:var(--muted);">' + cat.i + ' ' + (idx+1) + '/' + cat.v.length + '</div>';
+  html += '<div style="display:flex;gap:6px;">';
+  if (hasPrev) html += '<button class="ctab ctabo" style="padding:6px 12px;font-size:11px;" onclick="showViolation(\'' + ck + '\',' + (idx-1) + ')">← Prev</button>';
+  if (hasNext) html += '<button class="ctab ctabg" style="padding:6px 12px;font-size:11px;" onclick="showViolation(\'' + ck + '\',' + (idx+1) + ')">Next →</button>';
+  html += '</div></div>';
+  html += '<div style="font-family:Syne,sans-serif;font-size:16px;font-weight:700;line-height:1.35;margin-bottom:12px;">' + v.t + '</div>';
+  html += '<div class="vdb vdr"><div class="vdb-label" style="color:#fca5a5;">⚠️ What\'s really happening</div>' + v.re + '</div>';
+  html += '<div class="vdb vdbl"><div class="vdb-label" style="color:#93c5fd;">📋 The exact law</div>' + v.la + '</div>';
+  html += '<div class="vdb vdg"><div class="vdb-label" style="color:#86efac;">💬 What to say</div>' + v.sa + '</div>';
+  html += '<div class="vdb vdgold"><div class="vdb-label" style="color:var(--gold);">📍 Where to file</div>' + v.fi + '</div>';
+  html += '<div class="ctag">';
+  html += '<button class="ctab ctar" onclick="openVM(\'y\',\'' + ck + '\',' + idx + ')">⚖️ Call Mr. Maddy Mathew — 9840341381</button>';
+  html += '<button class="ctab ctabg" onclick="openVM(\'f\',\'' + ck + '\',' + idx + ')">📋 File Complaint / Get Template</button>';
+  html += '<button class="ctab ctabo" onclick="openVM(\'h\',\'' + ck + '\',' + idx + ')">🆓 Free Legal Help</button>';
+  html += '<button class="ctab ctabgold" onclick="openVM(\'l\',\'' + ck + '\',' + idx + ')">✉️ Generate Complaint Letter</button>';
+  html += '</div><div style="height:16px;"></div>';
+  document.getElementById('viol-content').innerHTML = html;
+  document.getElementById('viol-overlay').classList.add('open');
+}
+
+function closeViol(e) {
+  if (e && e.target !== document.getElementById('viol-overlay')) return;
+  document.getElementById('viol-overlay').classList.remove('open');
+}
+
+// ====== VM MODAL ======
+function openVM(type, ck, idx) {
+  var cat = LD[ck];
+  var v = cat.v[idx];
+  var html = '';
+  if (type === 'y') {
+    html = '<div style="font-family:Syne,sans-serif;font-size:18px;font-weight:700;margin-bottom:4px;">Call Our Lawyer</div>';
+    html += '<div style="font-size:12px;color:var(--muted);margin-bottom:14px;">POLARIS legal counsel — available for consultation</div>';
+    html += '<div style="background:rgba(255,179,71,.08);border:1px solid rgba(255,179,71,.2);border-radius:14px;padding:18px;text-align:center;margin-bottom:14px;">';
+    html += '<div style="font-size:22px;margin-bottom:6px;">⚖️</div>';
+    html += '<div style="font-family:Syne,sans-serif;font-size:18px;font-weight:700;">Mr. Maddy Mathew</div>';
+    html += '<div style="font-size:13px;color:var(--muted);margin-top:4px;">POLARIS Legal Counsel · Advocate, Madras HC</div>';
+    html += '<div style="font-size:16px;font-weight:700;color:var(--gold);margin-top:10px;">📞 9840341381</div>';
+    html += '<div style="font-size:11px;color:var(--muted);margin-top:4px;">Initial consultation for POLARIS users is free</div></div>';
+    html += '<div style="font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:14px;">Relevant issue: <strong style="color:var(--text);">' + v.t + '</strong><br>Applicable law: ' + v.la.substring(0,80) + '...</div>';
+    html += '<a href="tel:9840341381" class="btn btn-primary" style="display:block;text-decoration:none;text-align:center;padding:14px;border-radius:14px;font-family:Syne,sans-serif;font-size:15px;">📞 Call Now</a>';
+    html += '<button class="btn btn-outline" style="margin-top:8px;" onclick="document.getElementById(\'vm-overlay\').classList.remove(\'open\')">Close</button>';
+  } else if (type === 'f') {
+    html = '<div style="font-family:Syne,sans-serif;font-size:18px;font-weight:700;margin-bottom:14px;">File Complaint</div>';
+    html += '<div class="vdb vdbl" style="margin-bottom:12px;"><div class="vdb-label" style="color:#93c5fd;">WHERE TO FILE</div>' + v.fi + '</div>';
+    html += '<div style="font-size:13px;font-weight:600;margin-bottom:8px;">Online Portals:</div>';
+    var portals = [
+      {label:'National Consumer Helpline', url:'https://consumerhelpline.gov.in'},
+      {label:'TNRERA (Builders)', url:'https://tnrera.in'},
+      {label:'RBI Ombudsman (Banks)', url:'https://bankingombudsman.rbi.org.in'},
+      {label:'EPFO Grievance', url:'https://epfigms.gov.in'},
+      {label:'Cyber Crime Portal', url:'https://cybercrime.gov.in'},
+      {label:'CM Grievance Cell', url:'https://www.cms.tn.gov.in'}
+    ];
+    portals.forEach(function(p) {
+      html += '<a href="' + p.url + '" target="_blank" class="ctab ctabo" style="display:block;text-align:center;text-decoration:none;margin-bottom:6px;padding:10px;">' + p.label + ' →</a>';
+    });
+    html += '<button class="btn btn-outline" style="margin-top:6px;" onclick="document.getElementById(\'vm-overlay\').classList.remove(\'open\')">Close</button>';
+  } else if (type === 'h') {
+    html = '<div style="font-family:Syne,sans-serif;font-size:18px;font-weight:700;margin-bottom:14px;">🆓 Free Legal Help</div>';
+    html += '<div class="card2"><div style="font-size:14px;font-weight:700;margin-bottom:4px;">NALSA Helpline</div><div style="font-size:13px;color:var(--green);font-weight:700;">15100</div><div style="font-size:12px;color:var(--muted);margin-top:4px;">National Legal Services Authority — 24/7 free legal aid for all citizens</div></div>';
+    html += '<div class="card2"><div style="font-size:14px;font-weight:700;margin-bottom:4px;">Tamil Nadu SLSA</div><div style="font-size:13px;color:var(--green);font-weight:700;">044-28411216</div><div style="font-size:12px;color:var(--muted);margin-top:4px;">State Legal Services Authority — free lawyers, free filing</div></div>';
+    html += '<div class="card2"><div style="font-size:14px;font-weight:700;margin-bottom:4px;">POLARIS Lawyer</div><div style="font-size:13px;color:var(--gold);font-weight:700;">Mr. Maddy Mathew — 9840341381</div><div style="font-size:12px;color:var(--muted);margin-top:4px;">Initial consultation free for all POLARIS users</div></div>';
+    html += '<div class="card2"><div style="font-size:14px;font-weight:700;margin-bottom:4px;">Women\'s Helpline</div><div style="font-size:13px;color:var(--green);font-weight:700;">181</div><div style="font-size:12px;color:var(--muted);margin-top:4px;">TN Women\'s Helpline — legal advice, shelter, police support</div></div>';
+    html += '<button class="btn btn-outline" style="margin-top:6px;" onclick="document.getElementById(\'vm-overlay\').classList.remove(\'open\')">Close</button>';
+  } else if (type === 'l') {
+    html = '<div style="font-family:Syne,sans-serif;font-size:18px;font-weight:700;margin-bottom:14px;">✉️ Generate Complaint Letter</div>';
+    html += '<div class="inp-label">Your Full Name</div><input class="inp" id="l-name" placeholder="As in Aadhaar" style="margin-bottom:8px;">';
+    html += '<div class="inp-label">Your Address</div><input class="inp" id="l-addr" placeholder="House, Street, Area, Chennai — Pincode" style="margin-bottom:8px;">';
+    html += '<div class="inp-label">Establishment / Authority Name</div><input class="inp" id="l-est" placeholder="Name of school / hospital / company / govt office" style="margin-bottom:12px;">';
+    html += '<button class="ctab ctabg" onclick="genL(\'' + ck + '\',' + idx + ')">Generate Letter →</button>';
+    html += '<div id="letter-out"></div>';
+    html += '<div id="copy-btn-wrap" style="display:none;margin-top:10px;"><button class="btn btn-primary" onclick="copyL()" style="font-size:13px;">Copy Letter to Clipboard</button></div>';
+    html += '<button class="btn btn-outline" style="margin-top:8px;" onclick="document.getElementById(\'vm-overlay\').classList.remove(\'open\')">Close</button>';
+  }
+  document.getElementById('vm-content').innerHTML = html;
+  document.getElementById('vm-overlay').classList.add('open');
+}
+
+function closeVM(e) {
+  if (e && e.target !== document.getElementById('vm-overlay')) return;
+  document.getElementById('vm-overlay').classList.remove('open');
+}
+
+function genL(ck, idx) {
+  var v = LD[ck].v[idx];
+  var name = document.getElementById('l-name').value || '[Your Name]';
+  var addr = document.getElementById('l-addr').value || '[Your Address]';
+  var est = document.getElementById('l-est').value || '[Establishment Name]';
+  var today = new Date().toLocaleDateString('en-IN', {day:'2-digit', month:'long', year:'numeric'});
+  var letter = 'Date: ' + today + '\n\nFrom:\n' + name + '\n' + addr + '\n\nTo:\nThe Competent Authority / Grievance Officer\n' + est + '\nChennai, Tamil Nadu\n\nSubject: Formal Complaint — ' + v.t + '\n\nRespected Sir/Madam,\n\nI write this formal complaint regarding the following issue:\n\n' + v.re + '\n\nThis is a violation of the following law:\n' + v.la + '\n\nI hereby request that immediate action be taken to address this violation. Specifically, I demand:\n1. Written acknowledgement of this complaint within 7 days\n2. Specific remedial action within 30 days\n3. Written communication of the steps taken\n\nPlease note that I am prepared to escalate this matter to ' + v.fi + ' if this is not resolved promptly.\n\nI am also prepared to file an RTI application to obtain information on action taken.\n\nYours truly,\n' + name + '\nDate: ' + today;
+  var box = document.getElementById('letter-out');
+  box.textContent = letter;
+  box.style.display = 'block';
+  document.getElementById('copy-btn-wrap').style.display = 'block';
+}
+
+function copyL() {
+  var text = document.getElementById('letter-out').textContent;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(function() { alert('Letter copied! Paste into email or WhatsApp.'); });
+  } else {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    alert('Letter copied!');
+  }
+}
+
+// ====== PLAYBOOK ======
+function openPlaybook(key) {
+  var pb = PB[key];
+  if (!pb) return;
+  var html = '<div style="font-size:11px;color:var(--a);font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;">' + pb.issue + '</div>';
+  html += '<div style="font-family:Syne,sans-serif;font-size:18px;font-weight:700;margin-bottom:4px;">' + pb.title + '</div>';
+  html += '<div style="font-size:12px;color:var(--muted);margin-bottom:16px;">By ' + pb.by + ' — first-person experience</div>';
+  pb.steps.forEach(function(s) {
+    html += '<div class="pb-step"><div style="font-size:12px;font-weight:700;color:var(--a);margin-bottom:5px;">' + s.n + '</div><div style="font-size:13px;color:var(--muted);line-height:1.65;">' + s.t + '</div></div>';
+  });
+  html += '<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);">';
+  html += '<button class="btn btn-primary" onclick="sharePlaybook(\'' + key + '\')" style="font-size:13px;margin-bottom:8px;">Share on WhatsApp 💬</button>';
+  html += '<button class="btn btn-outline" onclick="closePlaybook()" style="font-size:13px;">Close</button></div>';
+  html += '<div style="height:20px;"></div>';
+  document.getElementById('pb-content').innerHTML = html;
+  document.getElementById('pb-overlay').classList.add('open');
+}
+
+function closePlaybook() {
+  document.getElementById('pb-overlay').classList.remove('open');
+}
+
+function closePBOuter(e) {
+  if (e.target === document.getElementById('pb-overlay')) closePlaybook();
+}
+
+function sharePlaybook(key) {
+  var pb = PB[key];
+  var text = '🛡️ POLARIS Civic Playbook: ' + pb.title + '\n\nBy ' + pb.by + '\n\n';
+  pb.steps.forEach(function(s, i) {
+    text += (i+1) + '. ' + s.n + '\n';
+  });
+  text += '\n📱 Download POLARIS app for full playbook + legal guide + RTI filing.';
+  window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+}
+
+// ====== THREAT NETWORK ======
+function openThreat() {
+  document.getElementById('threat-overlay').classList.add('open');
+  roleCount = 0;
+  document.querySelectorAll('.role-row').forEach(function(r) { r.classList.remove('filled'); });
+  document.getElementById('network-banner').style.display = 'none';
+  document.getElementById('role-counter').textContent = '0/5 roles filled';
+  setTimeout(startRoleAssignment, 600);
+}
+
+function closeThreat() {
+  document.getElementById('threat-overlay').classList.remove('open');
+  if (roleTimer) { clearTimeout(roleTimer); roleTimer = null; }
+}
+
+function startRoleAssignment() {
+  roleCount = 0;
+  function fillNext() {
+    if (roleCount >= 5) {
+      document.getElementById('network-banner').style.display = 'block';
+      return;
+    }
+    var rf = roleFillers[roleCount];
+    var row = document.getElementById('role' + roleCount);
+    row.querySelector('div > div:first-child').textContent = rf.role;
+    row.querySelector('div > div:last-child').textContent = rf.level;
+    document.getElementById('role' + roleCount + '-status').textContent = rf.name + ' · ' + rf.note;
+    row.classList.add('filled');
+    roleCount++;
+    document.getElementById('role-counter').textContent = roleCount + '/5 roles filled';
+    roleTimer = setTimeout(fillNext, 900);
+  }
+  fillNext();
+}
+
+// ====== REPORT ======
+// ====== REPORT ISSUE (clean rebuild) ======
+function openReport() {
+  // reset step 1
+  ['rep-city','rep-area','rep-wardnum','rep-location','rep-type','rep-desc'].forEach(function(id) {
+    var el = document.getElementById(id); if (el) el.value = '';
+  });
+  var lbl = document.getElementById('rep-photo-label'); if (lbl) lbl.textContent = '';
+  // reset step 2
+  ['rep-name','rep-phone','rep-email'].forEach(function(id) {
+    var el = document.getElementById(id); if (el) el.value = '';
+  });
+  // show step 1
+  document.getElementById('rep-step1').style.display = 'block';
+  document.getElementById('rep-step2').style.display = 'none';
+  document.getElementById('report-sheet').scrollTop = 0;
+  document.getElementById('report-overlay').classList.add('open');
+}
+
+function repStep1Submit() {
+  var city = document.getElementById('rep-city').value;
+  var area = document.getElementById('rep-area').value.trim();
+  var type = document.getElementById('rep-type').value;
+  var desc = document.getElementById('rep-desc').value.trim();
+  if (!city) { alert('Please select a city.'); return; }
+  if (!area) { alert('Please enter your area / locality.'); return; }
+  if (!type) { alert('Please select the type of issue.'); return; }
+  if (!desc) { alert('Please describe the issue.'); return; }
+  // move to sign up step
+  document.getElementById('rep-step1').style.display = 'none';
+  document.getElementById('rep-step2').style.display = 'block';
+  document.getElementById('report-sheet').scrollTop = 0;
+}
+
+function repBackToStep1() {
+  document.getElementById('rep-step2').style.display = 'none';
+  document.getElementById('rep-step1').style.display = 'block';
+  document.getElementById('report-sheet').scrollTop = 0;
+}
+
+function repFinalSubmit() {
+  var name = document.getElementById('rep-name').value.trim();
+  var phone = document.getElementById('rep-phone').value.trim();
+  if (!name) { alert('Please enter your name.'); return; }
+  if (!phone) { alert('Please enter your mobile number.'); return; }
+  var city = document.getElementById('rep-city').value;
+  var area = document.getElementById('rep-area').value;
+  var ward = document.getElementById('rep-wardnum').value;
+  var type = document.getElementById('rep-type').value;
+  var desc = document.getElementById('rep-desc').value;
+  document.getElementById('report-overlay').classList.remove('open');
+  // Add to My Issues
+  addMyIssue(city, area, ward, type, desc, name);
+  // Switch to My Issues tab
+  goTo('s-home', 0);
+  homeTab('myissues', document.getElementById('htab-myissues'));
+  alert('Issue submitted! 🚀\n\nThank you, ' + name + '.\n\nYour complaint is now live in "My Issues". The Guardian Network has been notified.\n\nFor legal support: Mr. Maddy Mathew — 9840341381');
+}
+
+function repPhotoAdded(input) {
+  var n = input.files ? input.files.length : 0;
+  var lbl = document.getElementById('rep-photo-label');
+  if (lbl && n > 0) lbl.textContent = '✓ ' + n + ' photo(s) attached';
+}
+
+// ====== RTI ======
+function rtiP(tab, btn) {
+  ['submit','track','guide','ai'].forEach(function(t) {
+    document.getElementById('rti-' + t).style.display = (t === tab) ? 'block' : 'none';
+    var b = document.getElementById('rtitab-' + t);
+    if (b) b.classList.remove('active');
+  });
+  document.getElementById('rtitab-' + tab).classList.add('active');
+}
+
+function showCouragePrompt() {
+  var name = document.getElementById('rti-name').value;
+  var dept = document.getElementById('rti-dept').value;
+  var text = document.getElementById('rti-text').value;
+  if (!name || !dept || !text) { alert('Please fill in your name, department, and RTI question first.'); return; }
+  document.getElementById('courage-overlay').classList.add('open');
+}
+
+function hideCouragePrompt() {
+  document.getElementById('courage-overlay').classList.remove('open');
+}
+
+function fileRTI() {
+  document.getElementById('courage-overlay').classList.remove('open');
+  var dept = document.getElementById('rti-dept').value;
+  var isCentral = dept.indexOf('EPFO') > -1 || dept.indexOf('BSNL') > -1 || dept.indexOf('Railways') > -1;
+  var portal = isCentral ? 'https://rtionline.gov.in' : 'https://rtionline.tn.gov.in';
+  var msg = 'Your RTI application is ready!\n\n';
+  msg += '📋 NEXT STEPS:\n';
+  msg += '1. Copy your RTI text from the form\n';
+  msg += '2. Go to: ' + portal + '\n';
+  msg += '3. Register and submit your application\n';
+  msg += '4. Fee: ' + (isCentral ? '₹10 (online payment)' : 'FREE') + '\n';
+  msg += '5. Keep your registration number\n';
+  msg += '6. Reply expected within 30 days\n\n';
+  msg += '⚖️ Need help? Call Mr. Maddy Mathew: 9840341381';
+  alert(msg);
+  window.open(portal, '_blank');
+}
+
+function trackRTI() {
+  var num = document.getElementById('rti-track-num').value;
+  if (!num) { alert('Enter your RTI registration number first.'); return; }
+  window.open('https://rtionline.tn.gov.in', '_blank');
+}
+
+function handleFileUpload(input) {
+  var names = Array.from(input.files).map(function(f){ return f.name; }).join(', ');
+  document.getElementById('file-list').textContent = '✓ Files attached: ' + names;
+}
+
+// ====== AI RTI DRAFT ======
+async function draftRTIWithAI() {
+  var input = document.getElementById('ai-rti-input').value.trim();
+  if (!input) { alert('Please describe your civic issue first.'); return; }
+  
+  document.getElementById('ai-rti-loading').style.display = 'block';
+  document.getElementById('ai-rti-result').style.display = 'none';
+
+  var today = new Date().toLocaleDateString('en-IN', {day:'2-digit', month:'long', year:'numeric'});
+  var systemPrompt = 'You are an RTI expert for Tamil Nadu, India. Draft a legally precise RTI application based on the user\'s problem description. The draft must: 1) Address the correct Public Information Officer, 2) Cite specific sections if applicable, 3) Ask 3-5 specific, actionable questions that will get useful information, 4) Be in plain English, 5) Include a note on the correct portal (rtionline.tn.gov.in for TN state, rtionline.gov.in for central). Start with "To: The Public Information Officer" and end with "Yours truly, [Your Name]". Keep it under 250 words. Output only the RTI text, no explanation.';
+
+  try {
+    var response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: 'Problem: ' + input + '\nToday\'s date: ' + today + '\nLocation: Chennai, Tamil Nadu' }]
+      })
+    });
+    var data = await response.json();
+    var text = data.content && data.content[0] ? data.content[0].text : 'Unable to generate draft. Please try again.';
+    document.getElementById('ai-rti-text').value = text;
+    document.getElementById('ai-rti-loading').style.display = 'none';
+    document.getElementById('ai-rti-result').style.display = 'block';
+  } catch(e) {
+    document.getElementById('ai-rti-loading').style.display = 'none';
+    document.getElementById('ai-rti-text').value = 'Connection error. Please check your internet and try again.\n\nManually draft your RTI using the TN Guide tab, or call Mr. Maddy Mathew at 9840341381 for help.';
+    document.getElementById('ai-rti-result').style.display = 'block';
+  }
+}
+
+function copyAIDraft() {
+  var text = document.getElementById('ai-rti-text').value;
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(function() { alert('Draft copied! Paste it on rtionline.tn.gov.in'); });
+  } else {
+    document.getElementById('ai-rti-text').select();
+    document.execCommand('copy');
+    alert('Copied!');
+  }
+}
+
+// ====== HEROES ======
+function heroTab(id, btn) {
+  ['h-stories','h-lb','h-join'].forEach(function(t) {
+    document.getElementById(t).style.display = (t === id) ? 'block' : 'none';
+  });
+  document.querySelectorAll('#s-heroes .tab-btn').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+}
+
+function switchLB(tab, btn) {
+  document.querySelectorAll('#h-lb .tab-btn').forEach(function(b) { b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+}
+
+// ====== GUARDIAN JOIN ======
+function joinGuardian(btn) {
+  var name = document.getElementById('g-name').value;
+  if (!name) { alert('Please enter your guardian name first.'); return; }
+  btn.textContent = '✓ Welcome, Guardian ' + name + '!';
+  btn.style.background = 'rgba(34,197,94,.15)';
+  btn.style.color = 'var(--green)';
+  btn.style.border = '1px solid rgba(34,197,94,.3)';
+  btn.disabled = true;
+  setTimeout(function() {
+    alert('🛡️ Welcome to the Guardian Network!\n\nYou are now Guardian #48.\n\nYou\'ll be notified when citizens in your ward need support. Share this app to grow the network.\n\nFor legal support: Mr. Maddy Mathew — 9840341381');
+  }, 300);
+}
+
+// ====== NEWS SHARE ======
+function shareNews(key) {
+  var texts = {
+    schools: '🏫 5 Chennai private schools served notices for illegal capitation fee! Know your RTE Section 13 rights. Download POLARIS civic app.',
+    gcc: '⚖️ RTI activism wins! GCC forced to disclose ₹47Cr road tender docs. Citizens 1, corruption 0. Download POLARIS.',
+    pf: '💼 IT firm penalised ₹8.5L for PF theft — a worker\'s RTI triggered the probe. Know your EPFO rights. Download POLARIS.'
+  };
+  window.open('https://wa.me/?text=' + encodeURIComponent(texts[key] || 'Civic win in Chennai!'), '_blank');
+}
+
+// ====== NEWS TABS ======
+function newsTab(tab, btn) {
+  ['civic','national','trending'].forEach(function(t) {
+    document.getElementById('ntab-' + t + '-content').style.display = (t === tab ? 'block' : 'none');
+    document.getElementById('ntab-' + t).classList.toggle('active', t === tab);
+  });
+}
+
+// ====== NATIONAL + TRENDING NEWS (AI-powered, 48h cache) ======
+var NEWS_CACHE_KEY = 'polaris_news_cache';
+var NEWS_TTL = 48 * 60 * 60 * 1000; // 48 hours in ms
+
+function getNewsCache(type) {
+  try {
+    var raw = sessionStorage.getItem(NEWS_CACHE_KEY + '_' + type);
+    if (!raw) return null;
+    var obj = JSON.parse(raw);
+    if (Date.now() - obj.ts > NEWS_TTL) return null;
+    return obj;
+  } catch(e) { return null; }
+}
+
+function setNewsCache(type, data, prompt) {
+  try {
+    sessionStorage.setItem(NEWS_CACHE_KEY + '_' + type, JSON.stringify({ts: Date.now(), data: data, prompt: prompt}));
+  } catch(e) {}
+}
+
+function formatNextRefresh(ts) {
+  var next = new Date(ts + NEWS_TTL);
+  return 'Next refresh: ' + next.toLocaleString('en-IN', {hour:'2-digit', minute:'2-digit', day:'numeric', month:'short'});
+}
+
+async function loadNationalNews() {
+  var btn = document.getElementById('nat-load-btn');
+  var list = document.getElementById('national-news-list');
+  var cached = getNewsCache('national');
+
+  if (cached) {
+    renderNationalCards(cached.data);
+    document.getElementById('nat-updated').textContent = formatNextRefresh(cached.ts);
+    btn.style.display = 'none';
+    return;
+  }
+
+  btn.textContent = 'Loading…'; btn.disabled = true;
+  list.innerHTML = '<div style="padding:30px 16px;text-align:center;color:var(--muted);font-size:13px;">📡 Fetching national headlines…</div>';
+
+  var today = new Date().toLocaleDateString('en-IN', {day:'2-digit', month:'long', year:'numeric'});
+  var prompt = 'Today is ' + today + '. List 6 major current Indian national news headlines across politics, economy, judiciary, and social issues. For each return JSON with fields: id (n1-n6), headline, source (e.g. "The Hindu"), category (Politics/Economy/Judiciary/Social/Security/Environment), emoji (one relevant emoji), url (the news source homepage URL), bias (number 0-100 where 0=far left, 50=centre, 100=far right), biasLabel (e.g. "Centre-Left"), summary (2 sentences, plain facts only). Return a JSON array only, no markdown, no preamble.';
+
+  try {
+    var res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1500,
+        messages: [{role: 'user', content: prompt}]
+      })
+    });
+    var data = await res.json();
+    var text = data.content && data.content[0] ? data.content[0].text : '';
+    text = text.replace(/```json|```/g, '').trim();
+    var articles = JSON.parse(text);
+    setNewsCache('national', articles, prompt);
+    renderNationalCards(articles);
+    document.getElementById('nat-updated').textContent = formatNextRefresh(Date.now());
+    btn.style.display = 'none';
+  } catch(e) {
+    list.innerHTML = '<div style="padding:20px 16px;font-size:13px;color:var(--muted);">Could not load headlines. Check connection and retry.</div>';
+    btn.textContent = 'Retry'; btn.disabled = false;
+  }
+}
+
+function renderNationalCards(articles) {
+  var list = document.getElementById('national-news-list');
+  list.innerHTML = '';
+  articles.forEach(function(a) {
+    var catColor = {Politics:'var(--a)',Economy:'var(--gold)',Judiciary:'var(--blue)',Social:'var(--green)',Security:'#fca5a5)',Environment:'#86efac'}[a.category] || 'var(--muted)';
+    var div = document.createElement('div');
+    div.className = 'nat-card';
+    div.innerHTML =
+      '<div style="display:flex;align-items:flex-start;gap:10px;">' +
+        '<div style="font-size:28px;line-height:1;flex-shrink:0;margin-top:2px;">' + (a.emoji||'📰') + '</div>' +
+        '<div style="flex:1;min-width:0;">' +
+          '<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;">' +
+            '<span class="src-badge" style="font-size:10px;">' + a.source + '</span>' +
+            '<span class="tag" style="font-size:10px;background:rgba(255,255,255,.04);color:var(--muted);border:1px solid var(--border);">' + a.category + '</span>' +
+          '</div>' +
+          '<div style="font-size:13px;font-weight:700;line-height:1.4;margin-bottom:5px;font-family:\'Syne\',sans-serif;">' + a.headline + '</div>' +
+          '<div style="font-size:11px;color:var(--muted);line-height:1.55;margin-bottom:8px;">' + a.summary + '</div>' +
+          '<div style="display:flex;align-items:center;gap:8px;">' +
+            '<a href="' + (a.url||'#') + '" target="_blank" style="font-size:11px;color:var(--blue);font-weight:700;text-decoration:none;">Read ↗</a>' +
+            '<button class="decode-btn" onclick="openDecoderFromData(' + JSON.stringify(JSON.stringify(a)).replace(/'/g,"&#39;") + ')">🔍 Decode</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    list.appendChild(div);
+  });
+}
+
+async function loadTrendingNews() {
+  var btn = document.getElementById('trend-load-btn');
+  var list = document.getElementById('trending-list');
+  var cached = getNewsCache('trending');
+
+  if (cached) {
+    renderTrendingCards(cached.data);
+    btn.style.display = 'none';
+    return;
+  }
+
+  btn.textContent = 'Loading…'; btn.disabled = true;
+  list.innerHTML = '<div style="padding:30px 16px;text-align:center;color:var(--muted);font-size:13px;">🔥 Fetching what India is talking about…</div>';
+
+  var today = new Date().toLocaleDateString('en-IN', {day:'2-digit', month:'long', year:'numeric'});
+  var prompt = 'Today is ' + today + '. List 8 trending Indian news stories that are getting the most social media and newsroom attention right now — include controversies, viral stories, government decisions, court orders, protests. For each return JSON: id (t1-t8), headline, source, emoji, url (source homepage), trendScore (1-100), trendReason (one line why it\'s trending), bias (0-100), biasLabel. Return JSON array only, no markdown.';
+
+  try {
+    var res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({model: 'claude-sonnet-4-20250514', max_tokens: 1500, messages: [{role:'user',content:prompt}]})
+    });
+    var data = await res.json();
+    var text = (data.content && data.content[0] ? data.content[0].text : '').replace(/```json|```/g,'').trim();
+    var articles = JSON.parse(text);
+    setNewsCache('trending', articles, prompt);
+    renderTrendingCards(articles);
+    btn.style.display = 'none';
+  } catch(e) {
+    list.innerHTML = '<div style="padding:20px 16px;font-size:13px;color:var(--muted);">Could not load trending. Check connection and retry.</div>';
+    btn.textContent = 'Retry'; btn.disabled = false;
+  }
 }
 
 function renderTrendingCards(articles) {
-var list = document.getElementById('trending-list');
-list.innerHTML = '';
-articles.forEach(function(a, i) {
-var heat = a.trendScore >= 80 ? '#FF4D2E' : a.trendScore >= 60 ? '#FFB347' : '#22C55E';
-var div = document.createElement('div');
-div.className = 'nat-card';
-div.innerHTML =
-'' +
-'' + (i+1) + '' +
-'' +
-'' +
-'' + a.source + '' +
-'🔥 ' + a.trendScore + '' +
-'' +
-'' + a.headline + '' +
-'Trending: ' + a.trendReason + '' +
-'' +
-'Read ↗' +
-'<button class="decode-btn" onclick="openDecoderFromData(' + JSON.stringify(JSON.stringify(a)).replace(/'/g,"'") + ')">🔍 Decode' +
-'' +
-'' +
-'';
-list.appendChild(div);
-});
+  var list = document.getElementById('trending-list');
+  list.innerHTML = '';
+  articles.forEach(function(a, i) {
+    var heat = a.trendScore >= 80 ? '#FF4D2E' : a.trendScore >= 60 ? '#FFB347' : '#22C55E';
+    var div = document.createElement('div');
+    div.className = 'nat-card';
+    div.innerHTML =
+      '<div style="display:flex;align-items:flex-start;gap:10px;">' +
+        '<div style="font-size:22px;font-weight:800;font-family:\'Syne\',sans-serif;color:' + heat + ';width:28px;flex-shrink:0;text-align:center;margin-top:2px;">' + (i+1) + '</div>' +
+        '<div style="flex:1;min-width:0;">' +
+          '<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;">' +
+            '<span class="src-badge" style="font-size:10px;">' + a.source + '</span>' +
+            '<span style="font-size:10px;color:' + heat + ';font-weight:700;">🔥 ' + a.trendScore + '</span>' +
+          '</div>' +
+          '<div style="font-size:13px;font-weight:700;line-height:1.4;margin-bottom:4px;font-family:\'Syne\',sans-serif;">' + a.headline + '</div>' +
+          '<div style="font-size:11px;color:var(--muted);margin-bottom:8px;">Trending: ' + a.trendReason + '</div>' +
+          '<div style="display:flex;gap:8px;">' +
+            '<a href="' + (a.url||'#') + '" target="_blank" style="font-size:11px;color:var(--blue);font-weight:700;text-decoration:none;">Read ↗</a>' +
+            '<button class="decode-btn" onclick="openDecoderFromData(' + JSON.stringify(JSON.stringify(a)).replace(/'/g,"&#39;") + ')">🔍 Decode</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    list.appendChild(div);
+  });
 }
 
 // ====== DECODER ======
 var CIVIC_DECODE = {
-civic1: {
-headline: '5 Chennai private schools served notices for illegal capitation fee collection',
-source: 'The Hindu', url: '[https://www.thehindu.com/news/cities/chennai/](https://www.thehindu.com/news/cities/chennai/)',
-bias: 38, biasLabel: 'Centre-Left',
-verdict: 'Factually solid. RTE Section 13 violations are real and the DEO action is genuine. Coverage is accurate but limited to one city.',
-flags: [{type:'green',label:'✅ Factual'},{type:'blue',label:'ℹ️ Incomplete scale'},{type:'gold',label:'⚠️ Episodic framing'}],
-missing: 'The story covers 5 schools. Hundreds operate similarly. No national pattern data cited. DEO enforcement is rare — most parents who don't know RTI never get refunds.',
-benefit: 'Schools under notice benefit from coverage being episodic rather than systemic — one story, no follow-up. Government appears responsive without structural reform.',
-action: 'File RTI to DEO Chennai: "How many schools have been penalised for capitation fee violations in 2023–24? List school names, amounts collected, and penalties imposed."'
-},
-civic2: {
-headline: 'GCC forced to disclose ₹47Cr road tender docs after 23 RTI applications',
-source: 'New Indian Express', url: '[https://www.newindianexpress.com/cities/chennai](https://www.newindianexpress.com/cities/chennai)',
-bias: 50, biasLabel: 'Balanced',
-verdict: 'Accurate and well-reported. RTI victory is genuine. The story correctly shows persistence works. Rare example of accountability journalism.',
-flags: [{type:'green',label:'✅ Factual'},{type:'green',label:'✅ RTI-verified'},{type:'blue',label:'ℹ️ Why 23 applications?'}],
-missing: 'Why did it take 23 applications? The PIO who stonewalled 22 times faces no named consequence. The discrepancies found — are they investigated? Story ends at disclosure, not outcome.',
-benefit: 'Citizen groups and transparency advocates. The story implicitly challenges the narrative that RTI doesn't work — it does, but with extreme persistence.',
-action: 'File RTI to GCC: "List all road contracts above ₹1Cr in your ward in 2023–24. Provide contractor names, awarded amounts, and work completion status."'
-},
-civic3: {
-headline: 'IT firm in Perungudi penalised ₹8.5L for PF non-deposit — worker's RTI triggered probe',
-source: 'Times of India', url: '[https://timesofindia.indiatimes.com/city/chennai](https://timesofindia.indiatimes.com/city/chennai)',
-bias: 55, biasLabel: 'Slightly Right-Leaning',
-verdict: 'Factual but framing is celebratory. ₹8.5L penalty sounds significant. The employer deducted PF for 18 months — that amount was larger. The penalty should have been higher.',
-flags: [{type:'green',label:'✅ RTI-verified'},{type:'gold',label:'⚠️ Penalty too low'},{type:'red',label:'🚩 Employer not named'}],
-missing: 'Employer name is not published — a major omission. Other employees at the same company? EPFO estimates 30-40% of small IT/BPO firms have compliance gaps. One story, tens of thousands affected.',
-benefit: 'The unnamed employer faces minimal reputational damage. EPFO appears functional. The systemic problem of contract labour PF theft is framed as an exception.',
-action: 'File RTI to EPFO Chennai: "How many PF non-deposit complaints were filed against IT/BPO companies in Chennai in 2023–24? How many resulted in enforcement action and penalty recovery?"'
-}
+  civic1: {
+    headline: '5 Chennai private schools served notices for illegal capitation fee collection',
+    source: 'The Hindu', url: 'https://www.thehindu.com/news/cities/chennai/search/?q=chennai+school+capitation+fee+notice+DEO',
+    bias: 38, biasLabel: 'Centre-Left',
+    verdict: 'Factually solid. RTE Section 13 violations are real and the DEO action is genuine. Coverage is accurate but limited to one city.',
+    flags: [{type:'green',label:'✅ Factual'},{type:'blue',label:'ℹ️ Incomplete scale'},{type:'gold',label:'⚠️ Episodic framing'}],
+    missing: 'The story covers 5 schools. Hundreds operate similarly. No national pattern data cited. DEO enforcement is rare — most parents who don\'t know RTI never get refunds.',
+    benefit: 'Schools under notice benefit from coverage being episodic rather than systemic — one story, no follow-up. Government appears responsive without structural reform.',
+    action: 'File RTI to DEO Chennai: "How many schools have been penalised for capitation fee violations in 2023–24? List school names, amounts collected, and penalties imposed."'
+  },
+  civic2: {
+    headline: 'GCC forced to disclose ₹47Cr road tender docs after 23 RTI applications',
+    source: 'New Indian Express', url: 'https://www.newindianexpress.com/search?query=GCC+road+tender+RTI+disclosure+Chennai',
+    bias: 50, biasLabel: 'Balanced',
+    verdict: 'Accurate and well-reported. RTI victory is genuine. The story correctly shows persistence works. Rare example of accountability journalism.',
+    flags: [{type:'green',label:'✅ Factual'},{type:'green',label:'✅ RTI-verified'},{type:'blue',label:'ℹ️ Why 23 applications?'}],
+    missing: 'Why did it take 23 applications? The PIO who stonewalled 22 times faces no named consequence. The discrepancies found — are they investigated? Story ends at disclosure, not outcome.',
+    benefit: 'Citizen groups and transparency advocates. The story implicitly challenges the narrative that RTI doesn\'t work — it does, but with extreme persistence.',
+    action: 'File RTI to GCC: "List all road contracts above ₹1Cr in your ward in 2023–24. Provide contractor names, awarded amounts, and work completion status."'
+  },
+  civic3: {
+    headline: 'IT firm in Perungudi penalised ₹8.5L for PF non-deposit — worker\'s RTI triggered probe',
+    source: 'Times of India', url: 'https://timesofindia.indiatimes.com/topic/epfo-chennai',
+    bias: 55, biasLabel: 'Slightly Right-Leaning',
+    verdict: 'Factual but framing is celebratory. ₹8.5L penalty sounds significant. The employer deducted PF for 18 months — that amount was larger. The penalty should have been higher.',
+    flags: [{type:'green',label:'✅ RTI-verified'},{type:'gold',label:'⚠️ Penalty too low'},{type:'red',label:'🚩 Employer not named'}],
+    missing: 'Employer name is not published — a major omission. Other employees at the same company? EPFO estimates 30-40% of small IT/BPO firms have compliance gaps. One story, tens of thousands affected.',
+    benefit: 'The unnamed employer faces minimal reputational damage. EPFO appears functional. The systemic problem of contract labour PF theft is framed as an exception.',
+    action: 'File RTI to EPFO Chennai: "How many PF non-deposit complaints were filed against IT/BPO companies in Chennai in 2023–24? How many resulted in enforcement action and penalty recovery?"'
+  }
 };
 
 function openDecoder(storyId) {
-var d = CIVIC_DECODE[storyId];
-if (!d) return;
-populateDecoder(d, false);
-goTo('s-decoder', 1);
+  var d = CIVIC_DECODE[storyId];
+  if (!d) return;
+  populateDecoder(d, false);
+  goTo('s-decoder', 1);
 }
 
 function openDecoderFromData(jsonStr) {
-var article;
-try { article = JSON.parse(jsonStr); } catch(e) { return; }
-// Trigger AI decode
-goTo('s-decoder', 1);
-document.getElementById('decoder-loading').style.display = 'block';
-document.getElementById('decoder-content').style.display = 'none';
-document.getElementById('decoder-source-label').textContent = article.source || '';
-decodeWithAI(article);
+  var article;
+  try { article = JSON.parse(jsonStr); } catch(e) { return; }
+  // Trigger AI decode
+  goTo('s-decoder', 1);
+  document.getElementById('decoder-loading').style.display = 'block';
+  document.getElementById('decoder-content').style.display = 'none';
+  document.getElementById('decoder-source-label').textContent = article.source || '';
+  decodeWithAI(article);
 }
 
 async function decodeWithAI(article) {
-var prompt = 'Analyse this Indian news article for a civic literacy app. Article: "' + article.headline + '" Source: ' + article.source + '. Return JSON with these fields: verdict (2-3 sentences: what the story got right and wrong), bias (0-100 number), biasLabel (e.g. "Centre-Left"), flags (array of objects with type: "red"/"gold"/"blue"/"green" and label: short flag text like "🚩 Propaganda signal" or "✅ Factual" or "⚠️ Missing context"), missing (2-3 sentences: what this story leaves out), benefit (1-2 sentences: who benefits from this framing), action (1 sentence: what a citizen can do). Return JSON only, no markdown.';
-try {
-var res = await fetch('[https://api.anthropic.com/v1/messages](https://api.anthropic.com/v1/messages)', {
-method: 'POST',
-headers: {'Content-Type': 'application/json'},
-body: JSON.stringify({model: 'claude-sonnet-4-20250514', max_tokens: 800, messages: [{role:'user',content:prompt}]})
-});
-var data = await res.json();
-var text = (data.content && data.content[0] ? data.content[0].text : '').replace(/```json|
-
-```/g,'').trim();
+  var prompt = 'Analyse this Indian news article for a civic literacy app. Article: "' + article.headline + '" Source: ' + article.source + '. Return JSON with these fields: verdict (2-3 sentences: what the story got right and wrong), bias (0-100 number), biasLabel (e.g. "Centre-Left"), flags (array of objects with type: "red"/"gold"/"blue"/"green" and label: short flag text like "🚩 Propaganda signal" or "✅ Factual" or "⚠️ Missing context"), missing (2-3 sentences: what this story leaves out), benefit (1-2 sentences: who benefits from this framing), action (1 sentence: what a citizen can do). Return JSON only, no markdown.';
+  try {
+    var res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({model: 'claude-sonnet-4-20250514', max_tokens: 800, messages: [{role:'user',content:prompt}]})
+    });
+    var data = await res.json();
+    var text = (data.content && data.content[0] ? data.content[0].text : '').replace(/```json|```/g,'').trim();
     var decoded = JSON.parse(text);
     decoded.headline = article.headline;
     decoded.source = article.source;
@@ -172,7 +2236,7 @@ var REP_DATA = {
       {type:'gold', label:'⚠️ Fund utilisation below 70% target'},
     ],
     rti:'Greater Chennai Corporation · Ward 108 PIO',
-    rtiUrl:'[https://rtionline.tn.gov.in](https://rtionline.tn.gov.in)',
+    rtiUrl:'https://rtionline.tn.gov.in',
     wgi:null, hdi:null, gallup:null
   },
 
@@ -201,7 +2265,7 @@ var REP_DATA = {
       {type:'gold', label:'⚠️ 44% of LAD fund unspent mid-year'},
     ],
     rti:'TN Legislative Assembly · MLA Constituency Office',
-    rtiUrl:'[https://rtionline.tn.gov.in](https://rtionline.tn.gov.in)',
+    rtiUrl:'https://rtionline.tn.gov.in',
     wgi:null, hdi:null, gallup:null
   },
 
@@ -231,7 +2295,7 @@ var REP_DATA = {
       {type:'red', label:'🚩 Fishermen welfare promise undelivered since 2019'},
     ],
     rti:'Lok Sabha Secretariat · MPLAD Nodal Officer',
-    rtiUrl:'[https://rtionline.gov.in](https://rtionline.gov.in)',
+    rtiUrl:'https://rtionline.gov.in',
     wgi:null, hdi:null, gallup:null
   },
 
@@ -245,7 +2309,7 @@ var REP_DATA = {
       {label:'State budget execution', val:55, color:'var(--blue)'},
       {label:'Flagship scheme delivery', val:48, color:'var(--gold)'},
       {label:'Press freedom (RSF index)', val:50, color:'var(--green)'},
-      {label:'Public grievance resolution', val:44, color(--a)'},
+      {label:'Public grievance resolution', val:44, color:'var(--a)'},
     ],
     funds:{title:'State Discretionary Fund (indicative)',allocated:'₹2,400 Cr (2026–27 est.)',spent:'Early stage — data limited',pending:'Audit pending',
       items:[{k:'Kalaignar welfare continuation',v:'Pending review'},{k:'Healthcare infra',v:'Pending budget'},{k:'Metro expansion',v:'Inherited from prev. govt'},{k:'TVK manifesto schemes',v:'Implementation stage'}]},
@@ -444,7 +2508,7 @@ function openRepDetail(repId) {
   html += '<div style="font-size:12px;color:var(--muted);">Email: <a href="mailto:' + d.contact.email + '" style="color:var(--blue);">' + d.contact.email + '</a></div></div>';
 
   html += '<div style="display:flex;gap:8px;margin-bottom:16px;">';
-  html += '<a href="[https://rtionline.tn.gov.in](https://rtionline.tn.gov.in)" target="_blank" class="btn" style="flex:1;text-align:center;text-decoration:none;background:rgba(255,77,46,.1);color:var(--a);border:1px solid rgba(255,77,46,.25);padding:11px;font-size:13px;">📋 File RTI</a>';
+  html += '<a href="https://rtionline.tn.gov.in" target="_blank" class="btn" style="flex:1;text-align:center;text-decoration:none;background:rgba(255,77,46,.1);color:var(--a);border:1px solid rgba(255,77,46,.25);padding:11px;font-size:13px;">📋 File RTI</a>';
   html += '<button onclick="goTo(\'s-rti\',4)" class="btn" style="flex:1;background:rgba(34,197,94,.1);color:var(--green);border:1px solid rgba(34,197,94,.25);font-size:13px;padding:11px;">⚡ AI Draft RTI</button>';
   html += '</div>';
 
@@ -468,12 +2532,12 @@ function upvoteBar(btn, countId, start, target) {
 // ====== SHARE ======
 function shareIssue(title, ward) {
   var text = '🚨 CIVIC ALERT — ' + title + '\nWard: ' + ward + '\n\nHelp escalate! #Chennai #CivicAction #POLARIS';
-  window.open('[https://wa.me/?text=](https://wa.me/?text=)' + encodeURIComponent(text), '_blank');
+  window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
 }
 
 function tweetIssue(title, ward) {
   var text = '🚨 ' + title + ' (' + ward + '). Citizens demanding accountability. #Chennai #CivicAction @GCC_Chennai';
-  window.open('[https://twitter.com/intent/tweet?text=](https://twitter.com/intent/tweet?text=)' + encodeURIComponent(text), '_blank');
+  window.open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(text), '_blank');
 }
 
 // ====== ISSUE THREAD DATA ======
@@ -656,8 +2720,26 @@ function upvoteThread() {
 function shareThread() {
   var issue = ISSUES[activeIssueId];
   var text = '🚨 CIVIC ALERT — ' + issue.shareText + '\nWard: ' + issue.ward + '\n\n#Chennai #CivicAction #POLARIS';
-  window.open('[https://wa.me/?text=](https://wa.me/?text=)' + encodeURIComponent(text), '_blank');
+  window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
 }
+
+function tweetThread() {
+  var issue = ISSUES[activeIssueId];
+  var text = '🚨 ' + issue.shareText + ' (' + issue.ward + '). Citizens demanding accountability. #Chennai #CivicAction @GCC_Chennai';
+  window.open('https://twitter.com/intent/tweet?text=' + encodeURIComponent(text), '_blank');
+}
+
+function postComment() {
+  var inp = document.getElementById('comment-inp');
+  var text = inp.value.trim();
+  if (!text) return;
+  if (!commentsData[activeIssueId]) commentsData[activeIssueId] = [];
+  commentsData[activeIssueId].unshift({u:'You', t:text, c:'#FF4D2E', likes:0, ts:'just now'});
+  inp.value = '';
+  renderThread();
+  document.getElementById('thread-comments').scrollTop = 0;
+}
+
 
 // ====== WELCOME POPUP ======
 function welcomeChoice(choice) {
@@ -731,6 +2813,20 @@ function enterApp() {
 document.addEventListener('DOMContentLoaded', function() {
   // DO NOT show welcome here — it shows when user taps Enter POLARIS
   // Init hero tabs
-  document.getElementById('I encountered an error doing what you asked. Could you try again?
-
-```
+  document.getElementById('h-lb').style.display = 'none';
+  document.getElementById('h-join').style.display = 'none';
+  // Init RTI tabs
+  ['track','guide','ai'].forEach(function(t) {
+    var el = document.getElementById('rti-' + t); if (el) el.style.display = 'none';
+  });
+  // Init rep tabs
+  document.getElementById('rtab-cm-content').style.display = 'none';
+  document.getElementById('rtab-pm-content').style.display = 'none';
+  // Init news tabs
+  document.getElementById('ntab-national-content').style.display = 'none';
+  document.getElementById('ntab-trending-content').style.display = 'none';
+});
+</script>
+<script src="polaris-api.js"></script>
+</body>
+</html>
